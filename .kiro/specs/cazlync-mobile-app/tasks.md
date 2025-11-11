@@ -138,18 +138,25 @@
   - Test debouncing behavior
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 5. Implement favorites functionality
+- [x] 5. Implement favorites functionality
+
+
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+
 
 - [ ] 5.1 Create favorites data layer
   - Add toggleFavorite method to ListingRepository
   - Implement getFavorites method
   - Update Firestore user document with favorite listings array
+
+
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
 - [ ] 5.2 Build favorites UI
   - Add favorite icon button to listing cards
   - Implement filled/unfilled icon states
+
   - Create FavoritesScreen showing saved listings
   - Add empty state for no favorites
   - _Requirements: 5.1, 5.2, 5.3, 5.5_

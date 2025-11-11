@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../domain/entities/listing_entity.dart';
 import '../../core/utils/formatters.dart';
+import '../controllers/favorites_providers.dart';
+import '../controllers/auth_providers.dart';
 
-class ListingCard extends StatelessWidget {
+class ListingCard extends ConsumerWidget {
   final ListingEntity listing;
   final VoidCallback onTap;
 
@@ -14,7 +17,11 @@ class ListingCard extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final authState = ref.watch(authControllerProvider);
+    final favoriteIds = ref.watch(favoriteIdsProvider);
+    final isFavorite = favoriteIds.contains(listing.id);
+
     return Card(
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -62,6 +69,39 @@ class ListingCard extends StatelessWidget {
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ),
+                    ),
+                  // Favorite button
+                  if (authState.user != null)
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: Icon(
+                            isFavorite ? Icons.favorite : Icons.favorite_border,
+                            color: isFavorite ? Colors.red : Colors.grey[700],
+                            size: 20,
+                          ),
+                          padding: const EdgeInsets.all(8),
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            ref
+                                .read(favoritesControllerProvider.notifier)
+                                .toggleFavorite(listing.id);
+                          },
                         ),
                       ),
                     ),

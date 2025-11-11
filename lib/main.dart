@@ -6,7 +6,7 @@ import 'core/constants/app_theme.dart';
 import 'presentation/controllers/auth_providers.dart';
 import 'presentation/controllers/auth_state.dart';
 import 'presentation/screens/login_screen.dart';
-import 'presentation/screens/home_screen.dart' as listing;
+import 'presentation/screens/main_navigation_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -51,9 +51,9 @@ class AuthWrapper extends ConsumerWidget {
       return const SplashScreen();
     }
 
-    // Show home screen if authenticated, otherwise show login
+    // Show main navigation screen if authenticated, otherwise show login
     if (authState.isAuthenticated) {
-      return const listing.HomeScreen();
+      return const MainNavigationScreen();
     }
 
     return const LoginScreen();

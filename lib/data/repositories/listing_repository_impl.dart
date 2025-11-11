@@ -109,4 +109,44 @@ class ListingRepositoryImpl implements ListingRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> toggleFavorite(
+    String userId,
+    String listingId,
+  ) async {
+    try {
+      await _listingService.toggleFavorite(userId, listingId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<String>>> getFavoriteIds(String userId) async {
+    try {
+      final favoriteIds = await _listingService.getFavoriteIds(userId);
+      return Right(favoriteIds);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ListingEntity>>> getFavoriteListings(
+    String userId,
+  ) async {
+    try {
+      final listings = await _listingService.getFavoriteListings(userId);
+      return Right(listings);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Stream<List<String>> watchFavoriteIds(String userId) {
+    return _listingService.watchFavoriteIds(userId);
+  }
 }

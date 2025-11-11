@@ -156,4 +156,82 @@ class ListingService {
         .map((doc) => ListingModel.fromFirestore(doc))
         .toList();
   }
+
+  // Favorites methods
+  Future<void> toggleFavorite(String userId, String listingId) async {
+    final userRef = _firestore.collection('users').doc(userId);
+    final userDoc = await userRef.get();
+
+    if (!userDoc.exists) {
+      throw Exception('User not found');
+    }
+
+    final userData = userDoc.data()!;
+    final favorites = List<String>.from(userData['favoriteListings'] ?? []);
+
+    if (favorites.contains(listingId)) {
+      // Remove from favorites
+      favorites.remove(listingId);
+    } else {
+      // Add to favorites
+      favorites.add(listingId);
+    }
+
+    await userRef.update({'favoriteListings': favorites});
+  }
+
+  Future<List<String>> getFavoriteIds(String userId) async {
+    final userDoc = await _firestore.collection('users').doc(userId).get();
+
+    if (!userDoc.exists) {
+      return [];
+    }
+
+    final userData = userDoc.data()!;
+    return List<String>.from(userData['favoriteListings'] ?? []);
+  }
+
+  Future<List<ListingModel>> getFavoriteListings(String userId) async {
+    final favoriteIds = await getFavoriteIds(userId);
+
+    if (favoriteIds.isEmpty) {
+      return [];
+    }
+
+    // Firestore 'in' query has a limit of 10 items
+    // Split into batches if needed
+    final List<ListingModel> allListings = [];
+    
+    for (int i = 0; i < favoriteIds.length; i += 10) {
+      final batch = favoriteIds.skip(i).take(10).toList();
+      
+      final snapshot = await _firestore
+          .collection('listings')
+          .where(FieldPath.documentId, whereIn: batch)
+          .where('status', isEqualTo: 'active')
+          .get();
+
+      final listings = snapshot.docs
+          .map((doc) => ListingModel.fromFirestore(doc))
+          .toList();
+      
+      allListings.addAll(listings);
+    }
+
+    return allListings;
+  }
+
+  Stream<List<String>> watchFavoriteIds(String userId) {
+    return _firestore
+        .collection('users')
+        .doc(userId)
+        .snapshots()
+        .map((snapshot) {
+      if (!snapshot.exists) {
+        return <String>[];
+      }
+      final data = snapshot.data()!;
+      return List<String>.from(data['favoriteListings'] ?? []);
+    });
+  }
 }

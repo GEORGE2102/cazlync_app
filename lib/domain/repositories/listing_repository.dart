@@ -27,4 +27,13 @@ abstract class ListingRepository {
   Stream<List<ListingEntity>> watchListings({ListingFilter? filter});
   
   Future<Either<Failure, void>> incrementViewCount(String listingId);
+  
+  // Favorites methods
+  Future<Either<Failure, void>> toggleFavorite(String userId, String listingId);
+  
+  Future<Either<Failure, List<String>>> getFavoriteIds(String userId);
+  
+  Future<Either<Failure, List<ListingEntity>>> getFavoriteListings(String userId);
+  
+  Stream<List<String>> watchFavoriteIds(String userId);
 }
