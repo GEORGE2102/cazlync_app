@@ -50,6 +50,21 @@ class ListingFilter extends Equatable {
       fuelType != null ||
       location != null;
 
+  bool get hasActiveFilters =>
+      brand != null ||
+      model != null ||
+      minPrice != null ||
+      maxPrice != null ||
+      minYear != null ||
+      maxYear != null ||
+      minMileage != null ||
+      maxMileage != null ||
+      bodyType != null ||
+      condition != null ||
+      transmissionType != null ||
+      fuelType != null ||
+      location != null;
+
   @override
   List<Object?> get props => [
         brand,

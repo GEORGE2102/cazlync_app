@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repositories/listing_repository.dart';
 import '../../data/repositories/listing_repository_impl.dart';
 import '../../domain/entities/listing_filter.dart';
+import '../../domain/entities/listing_entity.dart';
 import 'search_state.dart';
 import 'listing_state.dart';
 
@@ -85,8 +86,8 @@ class SearchController extends StateNotifier<SearchState> {
   void updatePriceRange(int? minPrice, int? maxPrice) {
     state = state.copyWith(
       filters: state.filters.copyWith(
-        minPrice: minPrice,
-        maxPrice: maxPrice,
+        minPrice: minPrice?.toDouble(),
+        maxPrice: maxPrice?.toDouble(),
       ),
     );
     _performSearch();
@@ -109,23 +110,62 @@ class SearchController extends StateNotifier<SearchState> {
     _performSearch();
   }
 
-  void updateCondition(String? condition) {
+  void updateCondition(String? conditionStr) {
+    VehicleCondition? condition;
+    if (conditionStr != null) {
+      condition = conditionStr == 'New' ? VehicleCondition.brandNew : VehicleCondition.used;
+    }
     state = state.copyWith(
-      filters: state.filters.copyWith(condition: condition),
+      filters: state.filters.copyWith(
+        condition: condition,
+        clearCondition: conditionStr == null,
+      ),
     );
     _performSearch();
   }
 
-  void updateTransmission(String? transmission) {
+  void updateTransmission(String? transmissionStr) {
+    TransmissionType? transmission;
+    if (transmissionStr != null) {
+      transmission = transmissionStr == 'Automatic' 
+          ? TransmissionType.automatic 
+          : TransmissionType.manual;
+    }
     state = state.copyWith(
-      filters: state.filters.copyWith(transmission: transmission),
+      filters: state.filters.copyWith(
+        transmissionType: transmission,
+        clearTransmissionType: transmissionStr == null,
+      ),
     );
     _performSearch();
   }
 
-  void updateFuelType(String? fuelType) {
+  void updateFuelType(String? fuelTypeStr) {
+    FuelType? fuelType;
+    if (fuelTypeStr != null) {
+      switch (fuelTypeStr) {
+        case 'Petrol':
+          fuelType = FuelType.petrol;
+          break;
+        case 'Diesel':
+          fuelType = FuelType.diesel;
+          break;
+        case 'Electric':
+          fuelType = FuelType.electric;
+          break;
+        case 'Hybrid':
+          fuelType = FuelType.hybrid;
+          break;
+        case 'LPG':
+          fuelType = FuelType.lpg;
+          break;
+      }
+    }
     state = state.copyWith(
-      filters: state.filters.copyWith(fuelType: fuelType),
+      filters: state.filters.copyWith(
+        fuelType: fuelType,
+        clearFuelType: fuelTypeStr == null,
+      ),
     );
     _performSearch();
   }

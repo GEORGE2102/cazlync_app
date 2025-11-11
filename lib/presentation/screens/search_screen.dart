@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/search_providers.dart';
 import '../controllers/listing_state.dart';
+import '../../domain/entities/listing_entity.dart';
 import '../widgets/listing_card.dart';
 import '../widgets/filter_bottom_sheet.dart';
 import 'listing_detail_screen.dart';
@@ -196,19 +197,40 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
 
     if (filters.condition != null) {
-      chips.add(_buildChip('Condition: ${filters.condition}', () {
+      final conditionText = filters.condition == VehicleCondition.brandNew ? 'New' : 'Used';
+      chips.add(_buildChip('Condition: $conditionText', () {
         ref.read(searchControllerProvider.notifier).updateCondition(null);
       }));
     }
 
-    if (filters.transmission != null) {
-      chips.add(_buildChip('Transmission: ${filters.transmission}', () {
+    if (filters.transmissionType != null) {
+      final transmissionText = filters.transmissionType == TransmissionType.automatic ? 'Automatic' : 'Manual';
+      chips.add(_buildChip('Transmission: $transmissionText', () {
         ref.read(searchControllerProvider.notifier).updateTransmission(null);
       }));
     }
 
     if (filters.fuelType != null) {
-      chips.add(_buildChip('Fuel: ${filters.fuelType}', () {
+      String fuelText = '';
+      switch (filters.fuelType!) {
+        case FuelType.petrol:
+          fuelText = 'Petrol';
+          break;
+        case FuelType.diesel:
+          fuelText = 'Diesel';
+          break;
+        case FuelType.electric:
+          fuelText = 'Electric';
+          break;
+        case FuelType.hybrid:
+        case FuelType.pluginHybrid:
+          fuelText = 'Hybrid';
+          break;
+        case FuelType.lpg:
+          fuelText = 'LPG';
+          break;
+      }
+      chips.add(_buildChip('Fuel: $fuelText', () {
         ref.read(searchControllerProvider.notifier).updateFuelType(null);
       }));
     }

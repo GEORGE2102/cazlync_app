@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/search_providers.dart';
+import '../../domain/entities/listing_entity.dart';
 
 class FilterBottomSheet extends ConsumerStatefulWidget {
   const FilterBottomSheet({super.key});
@@ -27,17 +28,42 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
     _brandController = TextEditingController(text: filters.brand);
     _modelController = TextEditingController(text: filters.model);
     _priceRange = RangeValues(
-      filters.minPrice?.toDouble() ?? 0,
-      filters.maxPrice?.toDouble() ?? 1000000,
+      filters.minPrice ?? 0,
+      filters.maxPrice ?? 1000000,
     );
     _yearRange = RangeValues(
       filters.minYear?.toDouble() ?? 1990,
       filters.maxYear?.toDouble() ?? DateTime.now().year.toDouble(),
     );
     _maxMileage = filters.maxMileage?.toDouble() ?? 500000;
-    _selectedCondition = filters.condition;
-    _selectedTransmission = filters.transmission;
-    _selectedFuelType = filters.fuelType;
+    
+    // Convert enums to strings
+    _selectedCondition = filters.condition != null
+        ? (filters.condition == VehicleCondition.brandNew ? 'New' : 'Used')
+        : null;
+    _selectedTransmission = filters.transmissionType != null
+        ? (filters.transmissionType == TransmissionType.automatic ? 'Automatic' : 'Manual')
+        : null;
+    if (filters.fuelType != null) {
+      switch (filters.fuelType!) {
+        case FuelType.petrol:
+          _selectedFuelType = 'Petrol';
+          break;
+        case FuelType.diesel:
+          _selectedFuelType = 'Diesel';
+          break;
+        case FuelType.electric:
+          _selectedFuelType = 'Electric';
+          break;
+        case FuelType.hybrid:
+        case FuelType.pluginHybrid:
+          _selectedFuelType = 'Hybrid';
+          break;
+        case FuelType.lpg:
+          _selectedFuelType = 'LPG';
+          break;
+      }
+    }
   }
 
   @override
@@ -302,6 +328,9 @@ class _FilterBottomSheetState extends ConsumerState<FilterBottomSheet> {
                       }),
                       _buildChoiceChip('Hybrid', _selectedFuelType == 'Hybrid', () {
                         setState(() => _selectedFuelType = 'Hybrid');
+                      }),
+                      _buildChoiceChip('LPG', _selectedFuelType == 'LPG', () {
+                        setState(() => _selectedFuelType = 'LPG');
                       }),
                     ],
                   ),
