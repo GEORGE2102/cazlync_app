@@ -1,17 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../controllers/auth_providers.dart';
+import '../controllers/profile_providers.dart';
 import 'edit_profile_screen.dart';
 import 'my_listings_screen.dart';
 import 'favorites_screen.dart';
 import 'settings_screen.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      final authState = ref.read(authControllerProvider);
+      final userId = authState.user?.id;
+      if (userId != null) {
+        ref.read(profileControllerProvider.notifier).loadUserStats(userId);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authControllerProvider);
+    final profileState = ref.watch(profileControllerProvider);
     final user = authState.user;
 
     if (user == null) {
@@ -19,6 +38,8 @@ class ProfileScreen extends ConsumerWidget {
         body: Center(child: Text('Please login')),
       );
     }
+
+    final stats = profileState.stats;
 
     return Scaffold(
       body: CustomScrollView(
@@ -103,6 +124,59 @@ class ProfileScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 16),
+                  
+                  // Quick Stats Cards
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          'Listings',
+                          '${stats['listings'] ?? 0}',
+                          Icons.car_rental,
+                          Colors.blue,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          'Favorites',
+                          '${stats['favorites'] ?? 0}',
+                          Icons.favorite,
+                          Colors.red,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 12),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          'Views',
+                          '${stats['views'] ?? 0}',
+                          Icons.visibility,
+                          Colors.green,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildStatCard(
+                          context,
+                          'Chats',
+                          '${stats['chats'] ?? 0}',
+                          Icons.chat,
+                          Colors.orange,
+                        ),
+                      ),
+                    ],
+                  ),
+                  
+                  const SizedBox(height: 24),
                   
                   // Account Section
                   _buildMenuSection(

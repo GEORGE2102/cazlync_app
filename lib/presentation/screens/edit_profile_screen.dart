@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../controllers/auth_providers.dart';
+import '../controllers/profile_providers.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   const EditProfileScreen({super.key});
@@ -96,13 +98,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Photo upload coming soon!'),
-                    ),
-                  );
-                },
+                onPressed: _isLoading ? null : _pickAndUploadPhoto,
                 child: const Text('Change Photo'),
               ),
               
@@ -190,16 +186,82 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     );
   }
 
+  Future<void> _pickAndUploadPhoto() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024,
+      maxHeight: 1024,
+      imageQuality: 85,
+    );
+
+    if (pickedFile == null) return;
+
+    setState(() => _isLoading = true);
+
+    final authState = ref.read(authControllerProvider);
+    final userId = authState.user?.id;
+
+    if (userId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final photoUrl = await ref
+        .read(profileControllerProvider.notifier)
+        .uploadProfilePhoto(
+          userId: userId,
+          imagePath: pickedFile.path,
+        );
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (photoUrl != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile photo updated!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to upload photo'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   void _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    try {
-      // TODO: Implement profile update in auth service
-      await Future.delayed(const Duration(seconds: 1));
-      
-      if (mounted) {
+    final authState = ref.read(authControllerProvider);
+    final userId = authState.user?.id;
+
+    if (userId == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final success = await ref
+        .read(profileControllerProvider.notifier)
+        .updateProfile(
+          userId: userId,
+          displayName: _nameController.text.trim(),
+          phoneNumber: _phoneController.text.trim().isNotEmpty
+              ? _phoneController.text.trim()
+              : null,
+        );
+
+    setState(() => _isLoading = false);
+
+    if (mounted) {
+      if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile updated successfully!'),
@@ -207,19 +269,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           ),
         );
         Navigator.pop(context);
-      }
-    } catch (e) {
-      if (mounted) {
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error updating profile: $e'),
+          const SnackBar(
+            content: Text('Failed to update profile'),
             backgroundColor: Colors.red,
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
       }
     }
   }

@@ -197,6 +197,7 @@
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
 
+
 - [ ] 6.1 Create chat data models and repository interface
   - Define ChatSession model with participant info
 
@@ -245,17 +246,24 @@
 - [ ] 7. Implement push notifications
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
-- [ ] 7.1 Set up Firebase Cloud Messaging
+
+
+
+- [x] 7.1 Set up Firebase Cloud Messaging
+
+
   - Configure FCM for Android and iOS
   - Request notification permissions
   - Store FCM tokens in user Firestore document
   - Handle token refresh and update in Firestore
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.5_
 
+
 - [ ] 7.2 Implement notification service
   - Create NotificationService for handling FCM messages
   - Implement foreground notification display
   - Implement background notification handling
+
 
 
 
