@@ -1,0 +1,14 @@
+🎨 SAVE YOUR CAZLYNC LOGO HERE
+
+1. Save the CazLync Sales logo image as: cazlync_logo.png
+2. Place it in this directory: assets/logo/
+3. Recommended size: 1024x1024 pixels (PNG format)
+
+Then run these commands:
+
+flutter pub get
+flutter pub run flutter_launcher_icons
+
+That's it! Your logo will be set as the launcher icon and appear throughout the app.
+
+See LOGO_IMPLEMENTATION_COMPLETE.md for full details.

@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../controllers/listing_providers.dart';
 import '../controllers/listing_state.dart';
+import '../controllers/auth_providers.dart';
+import '../controllers/chat_providers.dart';
 import '../../core/utils/formatters.dart';
+import 'chat_room_screen.dart';
 
 class ListingDetailScreen extends ConsumerStatefulWidget {
   final String listingId;
@@ -54,6 +57,80 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
         ],
       ),
       body: _buildBody(state),
+      bottomNavigationBar: state.listing != null
+          ? _buildContactBar(context, state.listing!)
+          : null,
+    );
+  }
+
+  Widget _buildContactBar(BuildContext context, listing) {
+    final authState = ref.watch(authControllerProvider);
+    final currentUserId = authState.user?.id;
+    
+    // Don't show contact button if viewing own listing
+    if (currentUserId == listing.sellerId) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: ElevatedButton.icon(
+          onPressed: () async {
+            if (currentUserId == null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please login to contact the seller'),
+                ),
+              );
+              return;
+            }
+
+            // Create or get chat session
+            final chatController = ref.read(chatControllerProvider.notifier);
+            final sessionId = await chatController.createChatSession(
+              listingId: listing.id,
+              listingTitle: '${listing.brand} ${listing.model}',
+              listingImageUrl: listing.imageUrls.isNotEmpty
+                  ? listing.imageUrls.first
+                  : '',
+              listingPrice: listing.price,
+              sellerId: listing.sellerId,
+              sellerName: listing.sellerName,
+              sellerPhotoUrl: listing.sellerPhotoUrl ?? '',
+            );
+
+            if (sessionId != null && mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChatRoomScreen(
+                    chatSessionId: sessionId,
+                  ),
+                ),
+              );
+            }
+          },
+          icon: const Icon(Icons.chat_bubble_outline),
+          label: const Text('Contact Seller'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        ),
+      ),
     );
   }
 

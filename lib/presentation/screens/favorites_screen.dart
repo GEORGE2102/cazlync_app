@@ -6,7 +6,12 @@ import '../widgets/listing_card.dart';
 import 'listing_detail_screen.dart';
 
 class FavoritesScreen extends ConsumerStatefulWidget {
-  const FavoritesScreen({super.key});
+  final bool showAppBar;
+  
+  const FavoritesScreen({
+    super.key,
+    this.showAppBar = true,
+  });
 
   @override
   ConsumerState<FavoritesScreen> createState() => _FavoritesScreenState();
@@ -26,12 +31,14 @@ class _FavoritesScreenState extends ConsumerState<FavoritesScreen> {
     final state = ref.watch(favoritesControllerProvider);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Favorites'),
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-        foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
-      ),
+      appBar: widget.showAppBar
+          ? AppBar(
+              title: const Text('Favorites'),
+              elevation: 0,
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              foregroundColor: Theme.of(context).textTheme.bodyLarge?.color,
+            )
+          : null,
       body: _buildBody(state),
     );
   }

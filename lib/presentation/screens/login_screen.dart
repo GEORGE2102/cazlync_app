@@ -69,15 +69,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               children: [
                 const SizedBox(height: 48),
                 // Logo
-                Icon(
-                  Icons.directions_car,
-                  size: 80,
-                  color: Theme.of(context).colorScheme.primary,
+                Center(
+                  child: Image.asset(
+                    'assets/logo/cazlync_logo.png',
+                    width: 120,
+                    height: 120,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to icon if logo not found
+                      return Icon(
+                        Icons.directions_car,
+                        size: 80,
+                        color: Theme.of(context).colorScheme.primary,
+                      );
+                    },
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 // Title
                 Text(
-                  'CazLync',
+                  'Welcome Back',
                   style: Theme.of(context).textTheme.displayLarge,
                   textAlign: TextAlign.center,
                 ),

@@ -114,8 +114,10 @@
   - Test pagination and caching logic
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 4. Implement search and filter functionality
+- [-] 4. Implement search and filter functionality
+
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
+
 
 - [ ] 4.1 Create search and filter UI components
   - Build SearchScreen with search bar and filter chips
@@ -139,6 +141,7 @@
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
 - [x] 5. Implement favorites functionality
+
 
 
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
@@ -168,17 +171,27 @@
   - Remove deleted listings from favorites
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
 
-- [ ]* 5.4 Write favorites tests
+
+
+
+- [x]* 5.4 Write favorites tests
+
+
   - Test toggle favorite functionality
   - Test favorites synchronization
   - Test deleted listing removal
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5_
+
+
+
 
 - [ ] 6. Implement chat module
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
 
 - [ ] 6.1 Create chat data models and repository interface
   - Define ChatSession model with participant info
+
+
   - Define Message model with timestamp and read status
   - Create ChatRepository interface with messaging methods
   - _Requirements: 6.1, 6.2, 6.3, 6.4, 6.5_
@@ -186,6 +199,7 @@
 - [ ] 6.2 Implement Firestore chat service
   - Create ChatService for Firestore chat operations
   - Implement createChatSession method
+
   - Implement sendMessage with real-time updates
   - Implement watchMessages stream for real-time chat
   - Implement watchChatSessions for chat list
@@ -197,8 +211,12 @@
   - Build ChatRoomScreen with message list and input
   - Add listing preview card at top of chat room
   - Implement message bubbles with sender/receiver styling
+
   - Add timestamp grouping for messages
   - Show unread indicators on chat list
+
+
+
   - _Requirements: 6.1, 6.3, 6.4, 6.5_
 
 - [ ] 6.4 Set up chat state management
@@ -229,18 +247,27 @@
   - Create NotificationService for handling FCM messages
   - Implement foreground notification display
   - Implement background notification handling
+
+
+
   - Add deep linking to navigate to relevant content
   - _Requirements: 7.1, 7.2, 7.3, 7.5_
+
+
 
 - [ ] 7.3 Create Cloud Functions for notifications
   - Write Cloud Function to send notification on new message
   - Write Cloud Function to send notification on listing approval
   - Write Cloud Function to send notification on premium expiry (3 days before)
+
+
+
   - Write Cloud Function for new listing alerts based on saved searches
   - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 - [ ] 7.4 Build notification settings UI
   - Create NotificationSettingsScreen
+
   - Add toggles for each notification category
   - Store preferences in user Firestore document
   - _Requirements: 7.4_

@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_theme.dart';
 import 'presentation/controllers/auth_providers.dart';
 import 'presentation/controllers/auth_state.dart';
 import 'presentation/screens/login_screen.dart';
 import 'presentation/screens/main_navigation_screen.dart';
+import 'data/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,13 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize notifications
+  final notificationService = NotificationService();
+  await notificationService.initialize();
+  
+  // Set background message handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   
   runApp(
     const ProviderScope(
@@ -66,27 +75,44 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.black,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.directions_car,
-              size: 100,
-              color: Theme.of(context).colorScheme.primary,
+            // CazLync Logo
+            Image.asset(
+              'assets/logo/cazlync_logo.png',
+              width: 200,
+              height: 200,
+              errorBuilder: (context, error, stackTrace) {
+                // Fallback to icon if logo not found
+                return Icon(
+                  Icons.directions_car,
+                  size: 100,
+                  color: Theme.of(context).colorScheme.primary,
+                );
+              },
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
             Text(
               'CazLync',
-              style: Theme.of(context).textTheme.displayLarge,
+              style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Buy & Sell Cars in Zambia',
-              style: Theme.of(context).textTheme.bodyMedium,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: Colors.white70,
+                  ),
             ),
-            const SizedBox(height: 24),
-            const CircularProgressIndicator(),
+            const SizedBox(height: 48),
+            const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
+            ),
           ],
         ),
       ),

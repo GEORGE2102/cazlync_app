@@ -83,6 +83,39 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 const SizedBox(height: 24),
+                // Logo
+                Center(
+                  child: Image.asset(
+                    'assets/logo/cazlync_logo.png',
+                    width: 100,
+                    height: 100,
+                    errorBuilder: (context, error, stackTrace) {
+                      // Fallback to icon if logo not found
+                      return Icon(
+                        Icons.directions_car,
+                        size: 60,
+                        color: Theme.of(context).colorScheme.primary,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  'Join CazLync',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Start buying and selling cars today',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Colors.grey[600],
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
                 // Name field
                 TextFormField(
                   controller: _nameController,

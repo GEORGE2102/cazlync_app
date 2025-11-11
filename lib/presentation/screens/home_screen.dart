@@ -5,6 +5,7 @@ import '../controllers/listing_state.dart';
 import '../widgets/listing_card.dart';
 import 'listing_detail_screen.dart';
 import 'create_listing_screen.dart';
+import 'search_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -50,7 +51,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () {
-              // TODO: Navigate to search screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SearchScreen(),
+                ),
+              );
             },
           ),
         ],
