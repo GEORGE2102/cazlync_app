@@ -11,8 +11,10 @@
   - Create base classes and interfaces for repositories and controllers
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 12.1, 12.2, 12.3, 12.4, 12.5_
 
-- [ ] 2. Implement authentication module
+- [-] 2. Implement authentication module
+
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 13.1, 13.2, 13.3, 13.4, 13.5_
+
 
 - [ ] 2.1 Create authentication data models and repository interface
   - Define User model with all required fields
