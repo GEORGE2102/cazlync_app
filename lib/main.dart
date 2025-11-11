@@ -6,6 +6,7 @@ import 'core/constants/app_theme.dart';
 import 'presentation/controllers/auth_providers.dart';
 import 'presentation/controllers/auth_state.dart';
 import 'presentation/screens/login_screen.dart';
+import 'presentation/screens/home_screen.dart' as listing;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +53,7 @@ class AuthWrapper extends ConsumerWidget {
 
     // Show home screen if authenticated, otherwise show login
     if (authState.isAuthenticated) {
-      return const HomeScreen();
+      return const listing.HomeScreen();
     }
 
     return const LoginScreen();
@@ -86,58 +87,6 @@ class SplashScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
             const CircularProgressIndicator(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class HomeScreen extends ConsumerWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(currentUserProvider);
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('CazLync'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              ref.read(authControllerProvider.notifier).signOut();
-            },
-          ),
-        ],
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.directions_car,
-              size: 80,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Welcome to CazLync!',
-              style: Theme.of(context).textTheme.displayMedium,
-            ),
-            const SizedBox(height: 16),
-            if (user != null) ...[
-              Text(
-                'Hello, ${user.displayName}!',
-                style: Theme.of(context).textTheme.bodyLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                user.email,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-            ],
           ],
         ),
       ),

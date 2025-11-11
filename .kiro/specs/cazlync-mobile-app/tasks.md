@@ -51,8 +51,12 @@
 - [ ] 2.4 Set up authentication state management
   - Create AuthController using StateNotifierProvider
   - Implement auth state persistence
+
   - Add session timeout logic (30 days)
   - Handle authentication errors and display user-friendly messages
+
+
+
   - _Requirements: 1.5, 13.4_
 
 - [ ]* 2.5 Write authentication tests
@@ -61,17 +65,17 @@
   - Test error handling and validation
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 3. Implement listing management module
+- [x] 3. Implement listing management module
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3.1 Create listing data models and repository interface
+- [x] 3.1 Create listing data models and repository interface
   - Define Listing model with all specifications
   - Create ListingRepository interface with CRUD methods
   - Define ListingFilter model for search criteria
   - Create ListingStatus enum (pending, active, rejected, deleted)
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 3.2, 3.3, 3.4, 4.1, 4.2_
 
-- [ ] 3.2 Implement Firestore listing service
+- [x] 3.2 Implement Firestore listing service
   - Create ListingService class for Firestore operations
   - Implement getListings with filter support
   - Implement createListing with image upload
@@ -80,7 +84,7 @@
   - Implement view count increment
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 4.1, 4.2, 4.3, 4.4, 4.5_
 
-- [ ] 3.3 Implement image upload and compression service
+- [x] 3.3 Implement image upload and compression service
   - Create ImageUploadService for handling images
   - Implement image compression using flutter_image_compress (target < 500KB)
   - Upload compressed images to Cloud Storage
@@ -88,7 +92,7 @@
   - Validate image count (3-20 images) and size limits
   - _Requirements: 4.3, 4.4, 12.2, 12.5_
 
-- [ ] 3.4 Create listing UI screens
+- [x] 3.4 Create listing UI screens
   - Build HomeScreen with listing grid (2 columns)
   - Build ListingDetailScreen with image gallery and specifications
   - Build CreateListingScreen with form and image picker
@@ -96,7 +100,7 @@
   - Add loading states, empty states, and error handling
   - _Requirements: 2.1, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2_
 
-- [ ] 3.5 Set up listing state management
+- [x] 3.5 Set up listing state management
   - Create ListingController using StateNotifierProvider
   - Implement pagination for listing results (20 items per page)
   - Add local caching using Hive for offline access

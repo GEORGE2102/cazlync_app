@@ -14,7 +14,17 @@ class FirestoreService {
   // Create user in Firestore
   Future<void> createUser(UserModel user) async {
     try {
-      await _usersCollection.doc(user.id).set(user.toFirestore());
+      await _usersCollection
+          .doc(user.id)
+          .set(user.toFirestore())
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ServerException(
+                'Firestore timeout. Please check if Firestore is enabled in Firebase Console.',
+              );
+            },
+          );
     } on FirebaseException catch (e) {
       throw ServerException('Failed to create user: ${e.message}');
     } catch (e) {
@@ -25,7 +35,17 @@ class FirestoreService {
   // Get user from Firestore
   Future<UserModel?> getUser(String userId) async {
     try {
-      final doc = await _usersCollection.doc(userId).get();
+      final doc = await _usersCollection
+          .doc(userId)
+          .get()
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ServerException(
+                'Firestore timeout. Please check if Firestore is enabled in Firebase Console.',
+              );
+            },
+          );
       
       if (!doc.exists) {
         return null;
