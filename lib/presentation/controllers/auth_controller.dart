@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/repositories/auth_repository.dart';
+import '../../data/services/notification_service.dart';
 import 'auth_state.dart';
 
 class AuthController extends StateNotifier<AuthState> {
@@ -41,15 +42,29 @@ class AuthController extends StateNotifier<AuthState> {
           errorMessage: failure.message,
         );
       },
-      (user) {
+      (user) async {
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
           isLoading: false,
           clearError: true,
         );
+        
+        // Store FCM token after successful login
+        await _storeFCMToken(user.id);
       },
     );
+  }
+  
+  // Store FCM token for push notifications
+  Future<void> _storeFCMToken(String userId) async {
+    try {
+      final notificationService = NotificationService();
+      await notificationService.storeFCMToken(userId);
+    } catch (e) {
+      // Silently fail - notifications are not critical
+      print('Failed to store FCM token: $e');
+    }
   }
 
   // Sign up with email and password
@@ -73,13 +88,16 @@ class AuthController extends StateNotifier<AuthState> {
           errorMessage: failure.message,
         );
       },
-      (user) {
+      (user) async {
         state = state.copyWith(
           status: AuthStatus.authenticated,
           user: user,
           isLoading: false,
           clearError: true,
         );
+        
+        // Store FCM token after successful sign up
+        await _storeFCMToken(user.id);
       },
     );
   }

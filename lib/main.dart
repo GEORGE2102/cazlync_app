@@ -75,45 +75,75 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // CazLync Logo
-            Image.asset(
-              'assets/logo/cazlync_logo.png',
-              width: 200,
-              height: 200,
-              errorBuilder: (context, error, stackTrace) {
-                // Fallback to icon if logo not found
-                return Icon(
-                  Icons.directions_car,
-                  size: 100,
-                  color: Theme.of(context).colorScheme.primary,
-                );
-              },
-            ),
-            const SizedBox(height: 32),
-            Text(
-              'CazLync',
-              style: Theme.of(context).textTheme.displayLarge?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Buy & Sell Cars in Zambia',
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white70,
-                  ),
-            ),
-            const SizedBox(height: 48),
-            const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.red),
-            ),
-          ],
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Color(0xFFDE2010), // Zambian Red
+              Color(0xFFEF7D00), // Zambian Orange
+              Color(0xFF198A00), // Zambian Green
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // CazLync Logo
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 20,
+                      offset: const Offset(0, 10),
+                    ),
+                  ],
+                ),
+                child: Image.asset(
+                  'assets/logo/cazlync_logo.png',
+                  width: 160,
+                  height: 160,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Fallback to icon if logo not found
+                    return const Icon(
+                      Icons.directions_car,
+                      size: 100,
+                      color: Color(0xFFDE2010),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 32),
+              Text(
+                'CazLync',
+                style: Theme.of(context).textTheme.displayLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 36,
+                      letterSpacing: 2,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Buy & Sell Cars in Zambia',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              const SizedBox(height: 48),
+              const CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                strokeWidth: 3,
+              ),
+            ],
+          ),
         ),
       ),
     );

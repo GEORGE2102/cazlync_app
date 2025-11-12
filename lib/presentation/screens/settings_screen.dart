@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'notification_settings_screen.dart';
 
 class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
@@ -9,10 +10,6 @@ class SettingsScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _emailNotifications = true;
-  bool _pushNotifications = true;
-  bool _chatNotifications = true;
   String _selectedLanguage = 'English';
 
   @override
@@ -25,46 +22,22 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         children: [
           // Notifications Section
           _buildSectionHeader('Notifications'),
-          SwitchListTile(
-            title: const Text('Enable Notifications'),
-            subtitle: const Text('Receive all app notifications'),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() => _notificationsEnabled = value);
+          ListTile(
+            leading: Icon(
+              Icons.notifications,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: const Text('Notification Settings'),
+            subtitle: const Text('Manage your notification preferences'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const NotificationSettingsScreen(),
+                ),
+              );
             },
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            title: const Text('Email Notifications'),
-            subtitle: const Text('Receive notifications via email'),
-            value: _emailNotifications,
-            onChanged: _notificationsEnabled
-                ? (value) {
-                    setState(() => _emailNotifications = value);
-                  }
-                : null,
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            title: const Text('Push Notifications'),
-            subtitle: const Text('Receive push notifications'),
-            value: _pushNotifications,
-            onChanged: _notificationsEnabled
-                ? (value) {
-                    setState(() => _pushNotifications = value);
-                  }
-                : null,
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            title: const Text('Chat Messages'),
-            subtitle: const Text('Get notified of new messages'),
-            value: _chatNotifications,
-            onChanged: _notificationsEnabled
-                ? (value) {
-                    setState(() => _chatNotifications = value);
-                  }
-                : null,
           ),
 
           const SizedBox(height: 24),

@@ -6,8 +6,9 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.light(
-        primary: AppColors.primary,
-        secondary: AppColors.secondary,
+        primary: AppColors.primary, // Zambian Red
+        secondary: AppColors.secondary, // Zambian Green
+        tertiary: AppColors.accent, // Zambian Orange
         surface: AppColors.surface,
         error: AppColors.error,
         onPrimary: AppColors.textLight,
@@ -115,12 +116,13 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.dark(
-        primary: AppColors.primary,
-        secondary: AppColors.accent,
-        surface: const Color(0xFF1E1E1E),
+        primary: AppColors.primary, // Zambian Red
+        secondary: AppColors.secondary, // Zambian Green
+        tertiary: AppColors.accent, // Zambian Orange
+        surface: AppColors.surfaceDark,
         error: AppColors.error,
         onPrimary: AppColors.textLight,
-        onSecondary: AppColors.textDark,
+        onSecondary: AppColors.textLight,
         onSurface: AppColors.textLight,
       ),
       scaffoldBackgroundColor: const Color(0xFF121212),
