@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../controllers/listing_providers.dart';
 import '../controllers/listing_state.dart';
 import '../controllers/auth_providers.dart';
@@ -42,7 +44,24 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
     _mileageController.dispose();
     _descriptionController.dispose();
     _locationController.dispose();
+    
+    // Clean up copied images if listing wasn't submitted
+    _cleanupImages();
+    
     super.dispose();
+  }
+  
+  Future<void> _cleanupImages() async {
+    for (final imagePath in _imagePaths) {
+      try {
+        final file = File(imagePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
   }
 
   Future<void> _pickImages() async {
@@ -53,13 +72,82 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       return;
     }
 
-    final images = await _picker.pickMultiImage();
-    if (images.isNotEmpty) {
-      setState(() {
-        _imagePaths.addAll(
-          images.map((img) => img.path).take(20 - _imagePaths.length),
+    try {
+      final images = await _picker.pickMultiImage();
+      if (images.isEmpty) {
+        print('📸 No images selected');
+        return;
+      }
+
+      // Use application documents directory instead of temp - more persistent
+      final appDir = await getApplicationDocumentsDirectory();
+      final imagesDir = Directory(path.join(appDir.path, 'pending_uploads'));
+      
+      // Create directory if it doesn't exist
+      if (!await imagesDir.exists()) {
+        await imagesDir.create(recursive: true);
+      }
+      
+      final copiedPaths = <String>[];
+      
+      print('📸 Copying ${images.length} images to: ${imagesDir.path}');
+      
+      for (final image in images.take(20 - _imagePaths.length)) {
+        try {
+          final file = File(image.path);
+          print('📸 Original path: ${image.path}');
+          
+          final exists = await file.exists();
+          print('📸 File exists: $exists');
+          
+          if (!exists) {
+            print('❌ Source file does not exist, skipping');
+            continue;
+          }
+          
+          final fileName = path.basename(image.path);
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final newPath = path.join(imagesDir.path, '${timestamp}_$fileName');
+          
+          print('📸 Copying to: $newPath');
+          final copiedFile = await file.copy(newPath);
+          
+          final copiedExists = await copiedFile.exists();
+          print('📸 Copied file exists: $copiedExists');
+          
+          if (copiedExists) {
+            copiedPaths.add(copiedFile.path);
+          }
+        } catch (e) {
+          print('❌ Error copying image: $e');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to copy image: $e')),
+            );
+          }
+        }
+      }
+      
+      if (copiedPaths.isNotEmpty) {
+        setState(() {
+          _imagePaths.addAll(copiedPaths);
+        });
+        print('✅ Added ${copiedPaths.length} images to list');
+      } else {
+        print('❌ No images were successfully copied');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Failed to load images. Please try again.')),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Error in _pickImages: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error selecting images: $e')),
         );
-      });
+      }
     }
   }
 
@@ -120,13 +208,17 @@ class _CreateListingScreenState extends ConsumerState<CreateListingScreen> {
       if (next.status == ListingStateStatus.success) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Listing created successfully! Pending approval.'),
+            content: Text('Listing created successfully!'),
+            backgroundColor: Colors.green,
           ),
         );
         Navigator.pop(context);
       } else if (next.status == ListingStateStatus.error) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(next.errorMessage ?? 'An error occurred')),
+          SnackBar(
+            content: Text(next.errorMessage ?? 'An error occurred'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     });

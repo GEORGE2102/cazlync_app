@@ -49,12 +49,13 @@ class ListingRepositoryImpl implements ListingRepository {
     ListingEntity listing,
     List<String> imagePaths,
   ) async {
+    String? listingId;
     try {
       // Create listing first to get ID
       final listingModel = ListingModel.fromEntity(listing);
-      final listingId = await _listingService.createListing(listingModel);
+      listingId = await _listingService.createListing(listingModel);
 
-      // Upload images
+      // Upload images - this is the critical step
       final imageUrls = await _imageUploadService.uploadListingImages(
         listingId,
         imagePaths,
@@ -67,7 +68,15 @@ class ListingRepositoryImpl implements ListingRepository {
 
       return Right(listingId);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      // If image upload fails, delete the listing to avoid orphaned data
+      if (listingId != null) {
+        try {
+          await _listingService.deleteListing(listingId);
+        } catch (_) {
+          // Ignore cleanup errors
+        }
+      }
+      return Left(ServerFailure('Failed to create listing: ${e.toString()}'));
     }
   }
 

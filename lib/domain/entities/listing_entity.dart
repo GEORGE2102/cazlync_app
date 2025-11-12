@@ -73,7 +73,7 @@ class ListingEntity extends Equatable {
     required this.mileage,
     required this.description,
     required this.imageUrls,
-    this.status = ListingStatus.pending,
+    this.status = ListingStatus.active, // Changed from pending to active for auto-approval
     this.isPremium = false,
     required this.createdAt,
     this.premiumExpiresAt,

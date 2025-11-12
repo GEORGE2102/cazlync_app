@@ -258,6 +258,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
               : null,
         );
 
+    if (success) {
+      // Refresh auth state to show updated name
+      await ref.read(authControllerProvider.notifier).refreshUser();
+    }
+
     setState(() => _isLoading = false);
 
     if (mounted) {

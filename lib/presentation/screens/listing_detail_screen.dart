@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/listing_providers.dart';
 import '../controllers/listing_state.dart';
 import '../controllers/auth_providers.dart';
@@ -96,29 +97,91 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
               return;
             }
 
-            // Create or get chat session
-            final chatController = ref.read(chatControllerProvider.notifier);
-            final sessionId = await chatController.createChatSession(
-              listingId: listing.id,
-              listingTitle: '${listing.brand} ${listing.model}',
-              listingImageUrl: listing.imageUrls.isNotEmpty
-                  ? listing.imageUrls.first
-                  : '',
-              listingPrice: listing.price,
-              sellerId: listing.sellerId,
-              sellerName: listing.sellerName,
-              sellerPhotoUrl: listing.sellerPhotoUrl ?? '',
-            );
-
-            if (sessionId != null && mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ChatRoomScreen(
-                    chatSessionId: sessionId,
-                  ),
+            if (currentUserId == listing.sellerId) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('You cannot message your own listing'),
                 ),
               );
+              return;
+            }
+
+            // Show loading
+            showDialog(
+              context: context,
+              barrierDismissible: false,
+              builder: (context) => const Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+
+            try {
+              // Fetch seller info from Firestore
+              final firestore = FirebaseFirestore.instance;
+              final sellerDoc = await firestore
+                  .collection('users')
+                  .doc(listing.sellerId)
+                  .get();
+
+              if (!sellerDoc.exists) {
+                if (mounted) {
+                  Navigator.pop(context); // Close loading
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Seller not found'),
+                    ),
+                  );
+                }
+                return;
+              }
+
+              final sellerData = sellerDoc.data()!;
+              final sellerName = sellerData['displayName'] ?? 'Unknown';
+              final sellerPhotoUrl = sellerData['photoUrl'] ?? '';
+
+              // Create or get chat session
+              final chatController = ref.read(chatControllerProvider.notifier);
+              final sessionId = await chatController.createChatSession(
+                listingId: listing.id,
+                listingTitle: '${listing.brand} ${listing.model}',
+                listingImageUrl: listing.imageUrls.isNotEmpty
+                    ? listing.imageUrls.first
+                    : '',
+                listingPrice: listing.price,
+                sellerId: listing.sellerId,
+                sellerName: sellerName,
+                sellerPhotoUrl: sellerPhotoUrl,
+              );
+
+              if (mounted) {
+                Navigator.pop(context); // Close loading
+
+                if (sessionId != null) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ChatRoomScreen(
+                        chatSessionId: sessionId,
+                      ),
+                    ),
+                  );
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to start chat'),
+                    ),
+                  );
+                }
+              }
+            } catch (e) {
+              if (mounted) {
+                Navigator.pop(context); // Close loading
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error: ${e.toString()}'),
+                  ),
+                );
+              }
             }
           },
           icon: const Icon(Icons.chat_bubble_outline),
