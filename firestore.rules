@@ -2,7 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
+    // ============================================
+    // HELPER FUNCTIONS
+    // ============================================
+    
     function isAuthenticated() {
       return request.auth != null;
     }
@@ -16,59 +19,220 @@ service cloud.firestore {
              get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true;
     }
     
-    // Users collection
+    function isNotSuspended() {
+      return !get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isSuspended', false);
+    }
+    
+    function isVerified() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('isVerified', false);
+    }
+    
+    // Validation functions
+    function isValidString(value, minLen, maxLen) {
+      return value is string && 
+             value.size() >= minLen && 
+             value.size() <= maxLen;
+    }
+    
+    function isValidPrice(price) {
+      return price is number && 
+             price >= 0 && 
+             price <= 10000000; // Max 10 million
+    }
+    
+    function isValidYear(year) {
+      return year is number && 
+             year >= 1900 && 
+             year <= 2030;
+    }
+    
+    function isValidMileage(mileage) {
+      return mileage is number && 
+             mileage >= 0 && 
+             mileage <= 1000000;
+    }
+    
+    function isValidImageCount(images) {
+      return images is list && 
+             images.size() >= 3 && 
+             images.size() <= 20;
+    }
+    
+    // ============================================
+    // USERS COLLECTION
+    // ============================================
+    
     match /users/{userId} {
-      // Anyone authenticated can read user profiles
+      // Anyone authenticated can read user profiles (for chat, listings, etc.)
       allow read: if isAuthenticated();
-      // Users can only create/update their own profile
-      allow create: if isOwner(userId);
-      allow update: if isOwner(userId);
+      
+      // Users can create their own profile during registration
+      allow create: if isOwner(userId) &&
+                      isValidString(request.resource.data.displayName, 2, 50) &&
+                      isValidString(request.resource.data.email, 5, 100);
+      
+      // Users can update their own profile
+      allow update: if isOwner(userId) &&
+                      // Cannot change critical fields
+                      request.resource.data.email == resource.data.email &&
+                      request.resource.data.createdAt == resource.data.createdAt &&
+                      // Cannot self-promote to admin
+                      (!request.resource.data.keys().hasAny(['isAdmin']) || 
+                       request.resource.data.isAdmin == resource.data.get('isAdmin', false)) &&
+                      // Cannot self-verify
+                      (!request.resource.data.keys().hasAny(['isVerified']) || 
+                       request.resource.data.isVerified == resource.data.get('isVerified', false));
+      
       // Only admins can delete users
       allow delete: if isAdmin();
     }
     
-    // Listings collection
+    // ============================================
+    // LISTINGS COLLECTION
+    // ============================================
+    
     match /listings/{listingId} {
-      // Public read for browsing
+      // Public read for browsing (active listings only for non-auth users)
       allow read: if true;
-      // Authenticated users can create listings
-      allow create: if isAuthenticated();
-      // Only owner or admin can update/delete
-      allow update, delete: if isAuthenticated() && 
-        (resource.data.sellerId == request.auth.uid || isAdmin());
+      
+      // Authenticated, non-suspended users can create listings
+      allow create: if isAuthenticated() &&
+                      isNotSuspended() &&
+                      // Validate required fields
+                      isValidString(request.resource.data.brand, 2, 50) &&
+                      isValidString(request.resource.data.model, 2, 50) &&
+                      isValidString(request.resource.data.description, 10, 2000) &&
+                      isValidPrice(request.resource.data.price) &&
+                      isValidYear(request.resource.data.year) &&
+                      isValidMileage(request.resource.data.mileage) &&
+                      isValidImageCount(request.resource.data.imageUrls) &&
+                      // Seller must be the authenticated user
+                      request.resource.data.sellerId == request.auth.uid &&
+                      // Status must be pending for new listings
+                      request.resource.data.status == 'pending' &&
+                      // Cannot create as premium without payment
+                      request.resource.data.get('isPremium', false) == false;
+      
+      // Owner can update their own listing (but not status)
+      allow update: if isAuthenticated() &&
+                      isNotSuspended() &&
+                      resource.data.sellerId == request.auth.uid &&
+                      // Cannot change seller
+                      request.resource.data.sellerId == resource.data.sellerId &&
+                      // Cannot change status (only admin can)
+                      request.resource.data.status == resource.data.status &&
+                      // Validate fields if changed
+                      (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['price']) ||
+                       isValidPrice(request.resource.data.price)) &&
+                      (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['year']) ||
+                       isValidYear(request.resource.data.year)) &&
+                      (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['mileage']) ||
+                       isValidMileage(request.resource.data.mileage));
+      
+      // Admin can update any listing (including status)
+      allow update: if isAdmin();
+      
+      // Owner or admin can delete
+      allow delete: if isAuthenticated() && 
+                      (resource.data.sellerId == request.auth.uid || isAdmin());
     }
     
-    // Chat sessions
+    // ============================================
+    // CHAT SESSIONS
+    // ============================================
+    
     match /chatSessions/{sessionId} {
       // Only participants can read
       allow read: if isAuthenticated() && 
-        (resource.data.buyerId == request.auth.uid || 
-         resource.data.sellerId == request.auth.uid);
+                    isNotSuspended() &&
+                    (resource.data.buyerId == request.auth.uid || 
+                     resource.data.sellerId == request.auth.uid);
+      
       // Authenticated users can create chat sessions
-      allow create: if isAuthenticated();
-      // Only participants can update
+      allow create: if isAuthenticated() &&
+                      isNotSuspended() &&
+                      // Must be either buyer or seller
+                      (request.resource.data.buyerId == request.auth.uid ||
+                       request.resource.data.sellerId == request.auth.uid) &&
+                      // Buyer and seller must be different
+                      request.resource.data.buyerId != request.resource.data.sellerId;
+      
+      // Only participants can update (for unread counts, last message, etc.)
       allow update: if isAuthenticated() && 
-        (resource.data.buyerId == request.auth.uid || 
-         resource.data.sellerId == request.auth.uid);
+                      isNotSuspended() &&
+                      (resource.data.buyerId == request.auth.uid || 
+                       resource.data.sellerId == request.auth.uid) &&
+                      // Cannot change participants
+                      request.resource.data.buyerId == resource.data.buyerId &&
+                      request.resource.data.sellerId == resource.data.sellerId;
       
       // Messages subcollection
       match /messages/{messageId} {
-        allow read: if isAuthenticated();
-        allow create: if isAuthenticated();
+        // Participants can read messages
+        allow read: if isAuthenticated() &&
+                      isNotSuspended();
+        
+        // Participants can create messages
+        allow create: if isAuthenticated() &&
+                        isNotSuspended() &&
+                        // Message text validation
+                        isValidString(request.resource.data.text, 1, 1000) &&
+                        // Sender must be authenticated user
+                        request.resource.data.senderId == request.auth.uid;
+        
+        // Cannot update or delete messages
+        allow update, delete: if false;
       }
     }
     
-    // Reports collection (admin only)
+    // ============================================
+    // REPORTS COLLECTION
+    // ============================================
+    
     match /reports/{reportId} {
+      // Admins can read all reports
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      
+      // Authenticated users can create reports
+      allow create: if isAuthenticated() &&
+                      isNotSuspended() &&
+                      isValidString(request.resource.data.reason, 5, 500) &&
+                      request.resource.data.reporterId == request.auth.uid;
+      
+      // Only admins can update reports (to resolve/dismiss)
       allow update: if isAdmin();
+      
+      // Cannot delete reports
+      allow delete: if false;
     }
     
-    // Analytics collection (admin only)
+    // ============================================
+    // ANALYTICS COLLECTION
+    // ============================================
+    
     match /analytics/{document=**} {
+      // Only admins can read analytics
       allow read: if isAdmin();
-      allow write: if false; // Only Cloud Functions can write
+      // Only Cloud Functions can write
+      allow write: if false;
+    }
+    
+    // ============================================
+    // NOTIFICATIONS COLLECTION (if used)
+    // ============================================
+    
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() &&
+                    resource.data.userId == request.auth.uid;
+      // Only Cloud Functions can create notifications
+      allow create: if false;
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() &&
+                      resource.data.userId == request.auth.uid;
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() &&
+                      resource.data.userId == request.auth.uid;
     }
   }
 }
