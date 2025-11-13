@@ -3,10 +3,15 @@ import 'package:intl/intl.dart';
 class Formatters {
   static String formatPrice(double price) {
     final formatter = NumberFormat.currency(
-      symbol: 'XAF ',
+      symbol: 'K',
       decimalDigits: 0,
     );
     return formatter.format(price);
+  }
+
+  static String formatNumber(int number) {
+    final formatter = NumberFormat('#,###');
+    return formatter.format(number);
   }
 
   static String formatMileage(int mileage) {

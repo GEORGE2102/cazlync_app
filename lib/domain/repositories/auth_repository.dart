@@ -9,6 +9,7 @@ abstract class AuthRepository {
   Future<Either<Failure, UserEntity>> signInWithFacebook();
   Future<Either<Failure, String>> signInWithPhone(String phoneNumber);
   Future<Either<Failure, UserEntity>> verifyPhoneOTP(String verificationId, String otp);
+  Future<Either<Failure, void>> sendPasswordResetEmail(String email);
   Future<Either<Failure, void>> signOut();
   Future<Either<Failure, UserEntity?>> getCurrentUser();
   Stream<UserEntity?> authStateChanges();

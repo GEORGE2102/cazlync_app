@@ -218,6 +218,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
 
     if (mounted) {
       if (photoUrl != null) {
+        // Refresh auth state to show updated photo
+        await ref.read(authControllerProvider.notifier).refreshUser();
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Profile photo updated!'),

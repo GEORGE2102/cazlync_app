@@ -5,6 +5,7 @@ enum ListingStatus {
   active,
   rejected,
   deleted,
+  sold,
 }
 
 enum BodyType {
@@ -62,6 +63,7 @@ class ListingEntity extends Equatable {
   final TransmissionType? transmissionType;
   final FuelType? fuelType;
   final String? location;
+  final bool contactForPrice;
 
   const ListingEntity({
     required this.id,
@@ -84,6 +86,7 @@ class ListingEntity extends Equatable {
     this.transmissionType,
     this.fuelType,
     this.location,
+    this.contactForPrice = false,
   });
 
   @override
@@ -108,6 +111,7 @@ class ListingEntity extends Equatable {
         transmissionType,
         fuelType,
         location,
+        contactForPrice,
       ];
 
   ListingEntity copyWith({
@@ -131,6 +135,7 @@ class ListingEntity extends Equatable {
     TransmissionType? transmissionType,
     FuelType? fuelType,
     String? location,
+    bool? contactForPrice,
   }) {
     return ListingEntity(
       id: id ?? this.id,
@@ -153,6 +158,7 @@ class ListingEntity extends Equatable {
       transmissionType: transmissionType ?? this.transmissionType,
       fuelType: fuelType ?? this.fuelType,
       location: location ?? this.location,
+      contactForPrice: contactForPrice ?? this.contactForPrice,
     );
   }
 }

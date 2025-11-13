@@ -3,8 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/validators.dart';
 import '../controllers/auth_providers.dart';
 import 'register_screen.dart';
-import 'admin_register_screen.dart';
-import 'debug_user_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -41,6 +39,72 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _handleFacebookLogin() async {
     await ref.read(authControllerProvider.notifier).signInWithFacebook();
+  }
+
+  Future<void> _showForgotPasswordDialog() async {
+    final emailController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reset Password'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  prefixIcon: Icon(Icons.email),
+                  border: OutlineInputBorder(),
+                ),
+                validator: Validators.validateEmail,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                Navigator.pop(context, true);
+                final success = await ref
+                    .read(authControllerProvider.notifier)
+                    .sendPasswordResetEmail(emailController.text.trim());
+                
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        success
+                            ? 'Password reset email sent! Check your inbox.'
+                            : 'Failed to send reset email. Please try again.',
+                      ),
+                      backgroundColor: success ? Colors.green : Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+    );
+
+    emailController.dispose();
   }
 
   @override
@@ -135,7 +199,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   validator: Validators.validatePassword,
                   enabled: !authState.isLoading,
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 8),
+                // Forgot password link
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: authState.isLoading ? null : _showForgotPasswordDialog,
+                    child: const Text('Forgot Password?'),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 // Login button
                 ElevatedButton(
                   onPressed: authState.isLoading ? null : _handleEmailLogin,
@@ -199,48 +272,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                // Admin registration button (temporary - remove in production)
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const AdminRegisterScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.admin_panel_settings, size: 16),
-                      label: const Text(
-                        'Create Admin',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                    ),
-                    const Text('|', style: TextStyle(color: Colors.grey)),
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => const DebugUserScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.bug_report, size: 16),
-                      label: const Text(
-                        'Debug',
-                        style: TextStyle(fontSize: 12),
-                      ),
-                      style: TextButton.styleFrom(
-                        foregroundColor: Colors.grey,
-                      ),
-                    ),
-                  ],
-                ),
+
               ],
             ),
           ),

@@ -23,6 +23,7 @@ class ListingModel extends ListingEntity {
     super.transmissionType,
     super.fuelType,
     super.location,
+    super.contactForPrice,
   });
 
   factory ListingModel.fromFirestore(DocumentSnapshot doc) {
@@ -50,6 +51,7 @@ class ListingModel extends ListingEntity {
       transmissionType: data['transmissionType'] != null ? _transmissionFromString(data['transmissionType']) : null,
       fuelType: data['fuelType'] != null ? _fuelTypeFromString(data['fuelType']) : null,
       location: data['location'],
+      contactForPrice: data['contactForPrice'] ?? false,
     );
   }
 
@@ -63,7 +65,7 @@ class ListingModel extends ListingEntity {
       'mileage': mileage,
       'description': description,
       'imageUrls': imageUrls,
-      'status': status.name,
+      'status': _statusToString(status),
       'isPremium': isPremium,
       'createdAt': Timestamp.fromDate(createdAt),
       'premiumExpiresAt': premiumExpiresAt != null
@@ -71,11 +73,12 @@ class ListingModel extends ListingEntity {
           : null,
       'specifications': specifications,
       'viewCount': viewCount,
-      'bodyType': bodyType?.name,
-      'condition': condition?.name,
-      'transmissionType': transmissionType?.name,
-      'fuelType': fuelType?.name,
+      'bodyType': bodyType != null ? _bodyTypeToString(bodyType!) : null,
+      'condition': condition != null ? _conditionToString(condition!) : null,
+      'transmissionType': transmissionType != null ? _transmissionToString(transmissionType!) : null,
+      'fuelType': fuelType != null ? _fuelTypeToString(fuelType!) : null,
       'location': location,
+      'contactForPrice': contactForPrice,
     };
   }
 
@@ -101,6 +104,7 @@ class ListingModel extends ListingEntity {
       transmissionType: entity.transmissionType,
       fuelType: entity.fuelType,
       location: entity.location,
+      contactForPrice: entity.contactForPrice,
     );
   }
 
@@ -126,6 +130,7 @@ class ListingModel extends ListingEntity {
       transmissionType: transmissionType,
       fuelType: fuelType,
       location: location,
+      contactForPrice: contactForPrice,
     );
   }
 
@@ -133,6 +138,8 @@ class ListingModel extends ListingEntity {
     switch (status) {
       case 'active':
         return ListingStatus.active;
+      case 'sold':
+        return ListingStatus.sold;
       case 'rejected':
         return ListingStatus.rejected;
       case 'deleted':
@@ -212,6 +219,52 @@ class ListingModel extends ListingEntity {
     }
   }
 
+  // Enum to String converters
+  static String _statusToString(ListingStatus status) {
+    if (status == ListingStatus.active) return 'active';
+    if (status == ListingStatus.sold) return 'sold';
+    if (status == ListingStatus.rejected) return 'rejected';
+    if (status == ListingStatus.deleted) return 'deleted';
+    return 'pending';
+  }
+
+  static String _bodyTypeToString(BodyType type) {
+    if (type == BodyType.sedan) return 'sedan';
+    if (type == BodyType.coupe) return 'coupe';
+    if (type == BodyType.suv) return 'suv';
+    if (type == BodyType.hatchback) return 'hatchback';
+    if (type == BodyType.convertible) return 'convertible';
+    if (type == BodyType.pickup) return 'pickup';
+    if (type == BodyType.van) return 'van';
+    if (type == BodyType.wagon) return 'wagon';
+    return 'other';
+  }
+
+  static String _conditionToString(VehicleCondition condition) {
+    if (condition == VehicleCondition.brandNew) return 'brandNew';
+    if (condition == VehicleCondition.used) return 'used';
+    if (condition == VehicleCondition.certifiedPreOwned) return 'certifiedPreOwned';
+    return 'used';
+  }
+
+  static String _transmissionToString(TransmissionType transmission) {
+    if (transmission == TransmissionType.automatic) return 'automatic';
+    if (transmission == TransmissionType.manual) return 'manual';
+    if (transmission == TransmissionType.cvt) return 'cvt';
+    if (transmission == TransmissionType.dct) return 'dct';
+    return 'manual';
+  }
+
+  static String _fuelTypeToString(FuelType fuel) {
+    if (fuel == FuelType.petrol) return 'petrol';
+    if (fuel == FuelType.diesel) return 'diesel';
+    if (fuel == FuelType.electric) return 'electric';
+    if (fuel == FuelType.hybrid) return 'hybrid';
+    if (fuel == FuelType.pluginHybrid) return 'pluginHybrid';
+    if (fuel == FuelType.lpg) return 'lpg';
+    return 'petrol';
+  }
+
   @override
   ListingModel copyWith({
     String? id,
@@ -234,6 +287,7 @@ class ListingModel extends ListingEntity {
     TransmissionType? transmissionType,
     FuelType? fuelType,
     String? location,
+    bool? contactForPrice,
   }) {
     return ListingModel(
       id: id ?? this.id,
@@ -256,6 +310,7 @@ class ListingModel extends ListingEntity {
       transmissionType: transmissionType ?? this.transmissionType,
       fuelType: fuelType ?? this.fuelType,
       location: location ?? this.location,
+      contactForPrice: contactForPrice ?? this.contactForPrice,
     );
   }
 }

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../controllers/listing_providers.dart';
 import '../controllers/listing_state.dart';
 import '../controllers/auth_providers.dart';
 import '../widgets/listing_card.dart';
+import '../../domain/entities/listing_entity.dart';
+import '../../data/models/listing_model.dart';
 import 'listing_detail_screen.dart';
 import 'create_listing_screen.dart';
 
@@ -15,24 +18,61 @@ class MyListingsScreen extends ConsumerStatefulWidget {
 }
 
 class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
+  List<ListingEntity> _myListings = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
   @override
   void initState() {
     super.initState();
-    Future.microtask(() {
-      ref.read(listingControllerProvider.notifier).loadListings();
+    _loadMyListings();
+  }
+
+  Future<void> _loadMyListings() async {
+    final authState = ref.read(authControllerProvider);
+    final currentUserId = authState.user?.id ?? '';
+    
+    if (currentUserId.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Please login to view your listings';
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
     });
+
+    try {
+      // Query Firestore directly to get ALL user listings (including sold)
+      final snapshot = await FirebaseFirestore.instance
+          .collection('listings')
+          .where('sellerId', isEqualTo: currentUserId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      final listings = snapshot.docs.map((doc) {
+        return ListingModel.fromFirestore(doc);
+      }).toList();
+
+      setState(() {
+        _myListings = listings;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final listingState = ref.watch(listingControllerProvider);
     final authState = ref.watch(authControllerProvider);
     final currentUserId = authState.user?.id ?? '';
-    
-    // Filter listings to show only current user's listings
-    final myListings = listingState.listings
-        .where((listing) => listing.sellerId == currentUserId)
-        .toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -51,7 +91,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
           ),
         ],
       ),
-      body: _buildBody(myListings, listingState.status, listingState.errorMessage),
+      body: _buildBody(_myListings, _isLoading, _errorMessage),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -66,12 +106,12 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
     );
   }
 
-  Widget _buildBody(List listings, ListingStateStatus status, String? errorMessage) {
-    if (status == ListingStateStatus.loading && listings.isEmpty) {
+  Widget _buildBody(List listings, bool isLoading, String? errorMessage) {
+    if (isLoading && listings.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (status == ListingStateStatus.error && errorMessage != null) {
+    if (errorMessage != null && listings.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -90,9 +130,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: () {
-                ref.read(listingControllerProvider.notifier).loadListings();
-              },
+              onPressed: _loadMyListings,
               child: const Text('Retry'),
             ),
           ],
@@ -105,9 +143,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
     }
 
     return RefreshIndicator(
-      onRefresh: () async {
-        await ref.read(listingControllerProvider.notifier).loadListings();
-      },
+      onRefresh: _loadMyListings,
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: listings.length,
@@ -115,19 +151,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
           final listing = listings[index];
           return Padding(
             padding: const EdgeInsets.only(bottom: 16),
-            child: ListingCard(
-              listing: listing,
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => ListingDetailScreen(
-                      listingId: listing.id,
-                    ),
-                  ),
-                );
-              },
-            ),
+            child: _buildMyListingCard(listing),
           );
         },
       ),
@@ -188,5 +212,208 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
         ),
       ),
     );
+  }
+
+  Widget _buildMyListingCard(listing) {
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        children: [
+          // Status Indicator Banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            color: _getStatusColor(listing.status),
+            child: Row(
+              children: [
+                Icon(
+                  _getStatusIcon(listing.status),
+                  color: Colors.white,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  _getStatusText(listing.status),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Listing Content
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ListingDetailScreen(
+                    listingId: listing.id,
+                  ),
+                ),
+              );
+            },
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  // Image
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: listing.imageUrls.isNotEmpty
+                        ? Image.network(
+                            listing.imageUrls.first,
+                            width: 100,
+                            height: 80,
+                            fit: BoxFit.cover,
+                          )
+                        : Container(
+                            width: 100,
+                            height: 80,
+                            color: Colors.grey[300],
+                            child: const Icon(Icons.car_rental),
+                          ),
+                  ),
+                  const SizedBox(width: 12),
+                  // Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          '${listing.brand} ${listing.model}',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'K${listing.price.toStringAsFixed(0)}',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${listing.year} • ${listing.mileage} km',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Action Buttons (only for active listings)
+          if (listing.status == ListingStatus.active)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                border: Border(
+                  top: BorderSide(color: Colors.grey[300]!),
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  TextButton.icon(
+                    onPressed: () => _markAsSold(listing.id),
+                    icon: const Icon(Icons.check_circle, size: 18),
+                    label: const Text('Mark as Sold'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(status) {
+    if (status == ListingStatus.active) return Colors.green;
+    if (status == ListingStatus.sold) return Colors.red;
+    if (status == ListingStatus.pending) return Colors.orange;
+    if (status == ListingStatus.rejected) return Colors.red[900]!;
+    return Colors.grey;
+  }
+
+  IconData _getStatusIcon(status) {
+    if (status == ListingStatus.active) return Icons.check_circle;
+    if (status == ListingStatus.sold) return Icons.sell;
+    if (status == ListingStatus.pending) return Icons.pending;
+    if (status == ListingStatus.rejected) return Icons.cancel;
+    return Icons.info;
+  }
+
+  String _getStatusText(status) {
+    if (status == ListingStatus.active) return 'ACTIVE';
+    if (status == ListingStatus.sold) return 'SOLD';
+    if (status == ListingStatus.pending) return 'PENDING APPROVAL';
+    if (status == ListingStatus.rejected) return 'REJECTED';
+    if (status == ListingStatus.deleted) return 'DELETED';
+    return 'UNKNOWN';
+  }
+
+  Future<void> _markAsSold(String listingId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Sold'),
+        content: const Text(
+          'Are you sure you want to mark this listing as sold? This will hide it from search results.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+            ),
+            child: const Text('Mark as Sold'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Update listing status to sold
+      await FirebaseFirestore.instance
+          .collection('listings')
+          .doc(listingId)
+          .update({
+        'status': 'sold',
+        'soldAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Listing marked as sold'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Refresh listings
+        _loadMyListings();
+      }
+    }
   }
 }

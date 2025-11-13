@@ -82,9 +82,9 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
       onRefresh: () async {
         await ref.read(chatControllerProvider.notifier).loadChatSessions();
       },
-      child: ListView.separated(
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: chatState.chatSessions.length,
-        separatorBuilder: (context, index) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final session = chatState.chatSessions[index];
           final isCurrentUserBuyer = session.buyerId == currentUserId;
@@ -95,22 +95,63 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
           final hasUnread = session.lastMessageSenderId != currentUserId &&
               session.unreadCount > 0;
 
-          return ListTile(
-            leading: CircleAvatar(
-              radius: 28,
-              backgroundImage: otherUserPhoto.isNotEmpty
-                  ? CachedNetworkImageProvider(otherUserPhoto)
-                  : null,
-              child: otherUserPhoto.isEmpty
-                  ? Text(
-                      otherUserName.isNotEmpty
-                          ? otherUserName[0].toUpperCase()
-                          : '?',
-                      style: const TextStyle(fontSize: 20),
-                    )
-                  : null,
+          return Container(
+            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: hasUnread ? Colors.blue.withOpacity(0.05) : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
             ),
-            title: Row(
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              leading: Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: CircleAvatar(
+                      radius: 28,
+                      backgroundColor: Colors.grey[200],
+                      backgroundImage: otherUserPhoto.isNotEmpty
+                          ? CachedNetworkImageProvider(otherUserPhoto)
+                          : null,
+                      child: otherUserPhoto.isEmpty
+                          ? Text(
+                              otherUserName.isNotEmpty
+                                  ? otherUserName[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
+                    ),
+                  ),
+                  // Online indicator (optional - can be enabled with real-time presence)
+                  // Positioned(
+                  //   right: 0,
+                  //   bottom: 0,
+                  //   child: Container(
+                  //     width: 14,
+                  //     height: 14,
+                  //     decoration: BoxDecoration(
+                  //       color: Colors.green,
+                  //       shape: BoxShape.circle,
+                  //       border: Border.all(color: Colors.white, width: 2),
+                  //     ),
+                  //   ),
+                  // ),
+                ],
+              ),
+              title: Row(
               children: [
                 Expanded(
                   child: Text(
@@ -167,20 +208,30 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                     if (hasUnread)
                       Container(
                         margin: const EdgeInsets.only(left: 8),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 2,
-                        ),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(10),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        child: Text(
-                          session.unreadCount.toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                        constraints: const BoxConstraints(
+                          minWidth: 20,
+                          minHeight: 20,
+                        ),
+                        child: Center(
+                          child: Text(
+                            session.unreadCount > 99 ? '99+' : session.unreadCount.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
                       ),
@@ -198,7 +249,8 @@ class _ChatListScreenState extends ConsumerState<ChatListScreen> {
                 ),
               );
             },
-          );
+          ),
+        );
         },
       ),
     );

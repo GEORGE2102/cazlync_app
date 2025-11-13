@@ -201,6 +201,17 @@ class AuthService {
     }
   }
 
+  // Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _firebaseAuth.sendPasswordResetEmail(email: email);
+    } on FirebaseAuthException catch (e) {
+      throw AuthenticationException(_getAuthErrorMessage(e.code));
+    } catch (e) {
+      throw AuthenticationException('Failed to send password reset email');
+    }
+  }
+
   // Sign out
   Future<void> signOut() async {
     try {

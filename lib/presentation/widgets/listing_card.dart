@@ -49,6 +49,95 @@ class ListingCard extends ConsumerWidget {
                       child: const Icon(Icons.car_rental, size: 48),
                     ),
                   ),
+                  // Status badge (ACTIVE or SOLD)
+                  if (listing.status == ListingStatus.active)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF4CAF50),
+                          borderRadius: BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'ACTIVE',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // SOLD badge (red corner ribbon)
+                  if (listing.status == ListingStatus.sold)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFFF44336),
+                          borderRadius: BorderRadius.only(
+                            bottomRight: Radius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'SOLD',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                  // Image count indicator
+                  if (listing.imageUrls.length > 1)
+                    Positioned(
+                      bottom: 8,
+                      right: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.7),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.photo_library,
+                              color: Colors.white,
+                              size: 12,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${listing.imageUrls.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   if (listing.isPremium)
                     Positioned(
                       top: 8,
@@ -75,7 +164,7 @@ class ListingCard extends ConsumerWidget {
                   // Favorite button
                   if (authState.user != null)
                     Positioned(
-                      top: 8,
+                      top: (listing.status == ListingStatus.active || listing.status == ListingStatus.sold) ? 40 : 8,
                       left: 8,
                       child: Container(
                         decoration: BoxDecoration(
@@ -124,20 +213,50 @@ class ListingCard extends ConsumerWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    Formatters.formatPrice(listing.price),
+                    listing.contactForPrice
+                        ? 'Contact for a price'
+                        : Formatters.formatPrice(listing.price),
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.primary,
                       fontWeight: FontWeight.bold,
-                      fontSize: 16,
+                      fontSize: listing.contactForPrice ? 13 : 16,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '${listing.year} • ${Formatters.formatMileage(listing.mileage)}',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 12,
-                    ),
+                  Row(
+                    children: [
+                      // Year badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${listing.year}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          '${Formatters.formatMileage(listing.mileage)} • ${_getTransmissionText()}',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 11,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -146,5 +265,19 @@ class ListingCard extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String _getTransmissionText() {
+    if (listing.transmissionType == null) return 'Manual';
+    switch (listing.transmissionType!) {
+      case TransmissionType.automatic:
+        return 'Automatic';
+      case TransmissionType.manual:
+        return 'Manual';
+      case TransmissionType.cvt:
+        return 'CVT';
+      case TransmissionType.dct:
+        return 'DCT';
+    }
   }
 }

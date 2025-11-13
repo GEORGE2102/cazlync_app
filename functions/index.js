@@ -1,7 +1,15 @@
-const functions = require('firebase-functions');
+const {onDocumentCreated, onDocumentUpdated} = require('firebase-functions/v2/firestore');
+const {onSchedule} = require('firebase-functions/v2/scheduler');
+const {setGlobalOptions} = require('firebase-functions/v2');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
+
+// Set global options
+setGlobalOptions({
+  region: 'us-central1',
+  maxInstances: 10,
+});
 
 // Helper function to send notification to user
 async function sendNotificationToUser(userId, payload) {
@@ -24,7 +32,11 @@ async function sendNotificationToUser(userId, payload) {
       return false;
     }
     
-    await admin.messaging().sendToDevice(fcmToken, payload);
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: payload.notification,
+      data: payload.data,
+    });
     console.log(`Notification sent to user ${userId}`);
     return true;
   } catch (error) {
@@ -34,12 +46,12 @@ async function sendNotificationToUser(userId, payload) {
 }
 
 // Send notification when a new message is sent
-exports.sendMessageNotification = functions.firestore
-  .document('chatSessions/{sessionId}/messages/{messageId}')
-  .onCreate(async (snap, context) => {
+exports.sendMessageNotification = onDocumentCreated(
+  'chatSessions/{sessionId}/messages/{messageId}',
+  async (event) => {
     try {
-      const message = snap.data();
-      const sessionId = context.params.sessionId;
+      const message = event.data.data();
+      const sessionId = event.params.sessionId;
       
       // Get chat session to find recipient
       const sessionDoc = await admin.firestore()
@@ -97,14 +109,12 @@ exports.sendMessageNotification = functions.firestore
           body: message.text.length > 100 
             ? message.text.substring(0, 100) + '...' 
             : message.text,
-          sound: 'default',
         },
         data: {
           type: 'new_message',
           chatSessionId: sessionId,
           senderId: senderId,
           listingId: session.listingId || '',
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
       };
       
@@ -118,13 +128,13 @@ exports.sendMessageNotification = functions.firestore
   });
 
 // Send notification when listing status changes
-exports.sendListingStatusNotification = functions.firestore
-  .document('listings/{listingId}')
-  .onUpdate(async (change, context) => {
+exports.sendListingStatusNotification = onDocumentUpdated(
+  'listings/{listingId}',
+  async (event) => {
     try {
-      const before = change.before.data();
-      const after = change.after.data();
-      const listingId = context.params.listingId;
+      const before = event.data.before.data();
+      const after = event.data.after.data();
+      const listingId = event.params.listingId;
       const sellerId = after.sellerId;
       
       // Check notification preferences
@@ -154,12 +164,10 @@ exports.sendListingStatusNotification = functions.firestore
           notification: {
             title: '✅ Listing Approved!',
             body: `Your ${after.brand} ${after.model} (${after.year}) is now live and visible to buyers!`,
-            sound: 'default',
           },
           data: {
             type: 'listing_approved',
             listingId: listingId,
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
           },
         };
       }
@@ -171,12 +179,10 @@ exports.sendListingStatusNotification = functions.firestore
           notification: {
             title: '❌ Listing Rejected',
             body: `Your ${after.brand} ${after.model} listing was rejected. ${reason}`,
-            sound: 'default',
           },
           data: {
             type: 'listing_rejected',
             listingId: listingId,
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
           },
         };
       }
@@ -187,12 +193,10 @@ exports.sendListingStatusNotification = functions.firestore
           notification: {
             title: '🚫 Listing Removed',
             body: `Your ${after.brand} ${after.model} listing has been removed.`,
-            sound: 'default',
           },
           data: {
             type: 'listing_removed',
             listingId: listingId,
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
           },
         };
       }
@@ -209,10 +213,12 @@ exports.sendListingStatusNotification = functions.firestore
   });
 
 // Check for premium listing expiry (runs daily)
-exports.checkPremiumExpiry = functions.pubsub
-  .schedule('0 9 * * *') // Run at 9 AM every day (Zambian time)
-  .timeZone('Africa/Lusaka')
-  .onRun(async (context) => {
+exports.checkPremiumExpiry = onSchedule(
+  {
+    schedule: '0 9 * * *',
+    timeZone: 'Africa/Lusaka',
+  },
+  async (event) => {
     try {
       const threeDaysFromNow = new Date();
       threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
@@ -250,13 +256,11 @@ exports.checkPremiumExpiry = functions.pubsub
               notification: {
                 title: '⭐ Premium Listing Expiring Soon',
                 body: `Your ${listing.brand} ${listing.model} premium listing expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Renew now to stay featured!`,
-                sound: 'default',
               },
               data: {
                 type: 'premium_expiry',
                 listingId: doc.id,
                 daysLeft: daysLeft.toString(),
-                click_action: 'FLUTTER_NOTIFICATION_CLICK',
               },
             };
             
@@ -276,12 +280,13 @@ exports.checkPremiumExpiry = functions.pubsub
   });
 
 // Send notification when someone favorites your listing
-exports.sendFavoriteNotification = functions.firestore
-  .document('users/{userId}')
-  .onUpdate(async (change, context) => {
+exports.sendFavoriteNotification = onDocumentUpdated(
+  'users/{userId}',
+  async (event) => {
     try {
-      const before = change.before.data();
-      const after = change.after.data();
+      const before = event.data.before.data();
+      const after = event.data.after.data();
+      const userId = event.params.userId;
       
       const beforeFavorites = before.favoriteListings || [];
       const afterFavorites = after.favoriteListings || [];
@@ -306,7 +311,7 @@ exports.sendFavoriteNotification = functions.firestore
         const sellerId = listing.sellerId;
         
         // Don't notify if user favorited their own listing
-        if (sellerId === context.params.userId) continue;
+        if (sellerId === userId) continue;
         
         // Check notification preferences
         const sellerDoc = await admin.firestore()
@@ -324,7 +329,7 @@ exports.sendFavoriteNotification = functions.firestore
         // Get user who favorited
         const userDoc = await admin.firestore()
           .collection('users')
-          .doc(context.params.userId)
+          .doc(userId)
           .get();
         
         const userName = userDoc.exists 
@@ -335,13 +340,11 @@ exports.sendFavoriteNotification = functions.firestore
           notification: {
             title: '❤️ New Favorite!',
             body: `${userName} saved your ${listing.brand} ${listing.model} listing`,
-            sound: 'default',
           },
           data: {
             type: 'new_favorite',
             listingId: listingId,
-            userId: context.params.userId,
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
+            userId: userId,
           },
         };
         
@@ -356,12 +359,12 @@ exports.sendFavoriteNotification = functions.firestore
   });
 
 // Send welcome notification to new users
-exports.sendWelcomeNotification = functions.firestore
-  .document('users/{userId}')
-  .onCreate(async (snap, context) => {
+exports.sendWelcomeNotification = onDocumentCreated(
+  'users/{userId}',
+  async (event) => {
     try {
-      const user = snap.data();
-      const userId = context.params.userId;
+      const user = event.data.data();
+      const userId = event.params.userId;
       
       // Wait a bit for FCM token to be set
       await new Promise(resolve => setTimeout(resolve, 5000));
@@ -370,11 +373,9 @@ exports.sendWelcomeNotification = functions.firestore
         notification: {
           title: '🎉 Welcome to CazLync!',
           body: `Hi ${user.displayName || 'there'}! Start browsing cars or post your first listing.`,
-          sound: 'default',
         },
         data: {
           type: 'welcome',
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
       };
       
@@ -388,12 +389,13 @@ exports.sendWelcomeNotification = functions.firestore
   });
 
 // Send notification when listing gets a certain number of views
-exports.sendViewMilestoneNotification = functions.firestore
-  .document('listings/{listingId}')
-  .onUpdate(async (change, context) => {
+exports.sendViewMilestoneNotification = onDocumentUpdated(
+  'listings/{listingId}',
+  async (event) => {
     try {
-      const before = change.before.data();
-      const after = change.after.data();
+      const before = event.data.before.data();
+      const after = event.data.after.data();
+      const listingId = event.params.listingId;
       
       const beforeViews = before.viewCount || 0;
       const afterViews = after.viewCount || 0;
@@ -431,13 +433,11 @@ exports.sendViewMilestoneNotification = functions.firestore
         notification: {
           title: '🔥 Your Listing is Popular!',
           body: `Your ${after.brand} ${after.model} has reached ${reachedMilestone} views!`,
-          sound: 'default',
         },
         data: {
           type: 'view_milestone',
-          listingId: context.params.listingId,
+          listingId: listingId,
           views: reachedMilestone.toString(),
-          click_action: 'FLUTTER_NOTIFICATION_CLICK',
         },
       };
       
@@ -446,6 +446,256 @@ exports.sendViewMilestoneNotification = functions.firestore
       return null;
     } catch (error) {
       console.error('Error sending view milestone notification:', error);
+      return null;
+    }
+  });
+
+// Send notification to users when a new car is posted (latest cars)
+exports.notifyNewCarPosted = onDocumentCreated(
+  'listings/{listingId}',
+  async (event) => {
+    try {
+      const listing = event.data.data();
+      const listingId = event.params.listingId;
+      
+      // Only notify for active listings
+      if (listing.status !== 'active') {
+        console.log('Listing not active, skipping notification');
+        return null;
+      }
+      
+      // Get all users who have notifications enabled
+      const usersSnapshot = await admin.firestore()
+        .collection('users')
+        .get();
+      
+      const notifications = [];
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const user = userDoc.data();
+        const userId = userDoc.id;
+        
+        // Don't notify the seller
+        if (userId === listing.sellerId) continue;
+        
+        // Check notification preferences
+        const notificationSettings = user.notificationSettings || {};
+        if (notificationSettings.newListings === false) continue;
+        
+        // Check if user has FCM token
+        if (!user.fcmToken) continue;
+        
+        // Send notification
+        const payload = {
+          notification: {
+            title: '🚗 New Car Posted!',
+            body: `${listing.brand} ${listing.model} (${listing.year}) - ${listing.contactForPrice ? 'Contact for price' : 'K' + listing.price.toLocaleString()}`,
+          },
+          data: {
+            type: 'new_listing',
+            listingId: listingId,
+            brand: listing.brand,
+            model: listing.model,
+          },
+        };
+        
+        notifications.push(sendNotificationToUser(userId, payload));
+      }
+      
+      await Promise.all(notifications);
+      console.log(`Sent ${notifications.length} new car notifications`);
+      
+      return null;
+    } catch (error) {
+      console.error('Error sending new car notifications:', error);
+      return null;
+    }
+  });
+
+// Send notification to seller when buyer sends first message
+exports.notifySellerNewBuyerMessage = onDocumentCreated(
+  'chatSessions/{sessionId}/messages/{messageId}',
+  async (event) => {
+    try {
+      const message = event.data.data();
+      const sessionId = event.params.sessionId;
+      
+      // Get chat session
+      const sessionDoc = await admin.firestore()
+        .collection('chatSessions')
+        .doc(sessionId)
+        .get();
+      
+      if (!sessionDoc.exists) {
+        console.log('Chat session not found');
+        return null;
+      }
+      
+      const session = sessionDoc.data();
+      const senderId = message.senderId;
+      
+      // Only notify seller when buyer sends message
+      if (senderId !== session.buyerId) {
+        return null; // Seller sent message, don't notify
+      }
+      
+      const sellerId = session.sellerId;
+      
+      // Check if this is the first message from buyer
+      const messagesSnapshot = await admin.firestore()
+        .collection('chatSessions')
+        .doc(sessionId)
+        .collection('messages')
+        .where('senderId', '==', session.buyerId)
+        .orderBy('timestamp', 'asc')
+        .limit(2)
+        .get();
+      
+      // If more than 1 message from buyer, not first message
+      if (messagesSnapshot.size > 1) {
+        return null;
+      }
+      
+      // Get seller info
+      const sellerDoc = await admin.firestore()
+        .collection('users')
+        .doc(sellerId)
+        .get();
+      
+      if (!sellerDoc.exists) {
+        console.log('Seller not found');
+        return null;
+      }
+      
+      const seller = sellerDoc.data();
+      
+      // Check notification preferences
+      const notificationSettings = seller.notificationSettings || {};
+      if (notificationSettings.messages === false) {
+        console.log('Seller has disabled message notifications');
+        return null;
+      }
+      
+      // Get buyer info
+      const buyerDoc = await admin.firestore()
+        .collection('users')
+        .doc(session.buyerId)
+        .get();
+      
+      const buyerName = buyerDoc.exists 
+        ? buyerDoc.data().displayName || 'A buyer'
+        : 'A buyer';
+      
+      // Get listing info
+      let listingInfo = '';
+      if (session.listingId) {
+        const listingDoc = await admin.firestore()
+          .collection('listings')
+          .doc(session.listingId)
+          .get();
+        
+        if (listingDoc.exists) {
+          const listing = listingDoc.data();
+          listingInfo = ` about your ${listing.brand} ${listing.model}`;
+        }
+      }
+      
+      // Send notification
+      const payload = {
+        notification: {
+          title: '💬 New Buyer Inquiry!',
+          body: `${buyerName} is interested${listingInfo}: "${message.text.substring(0, 80)}${message.text.length > 80 ? '...' : ''}"`,
+        },
+        data: {
+          type: 'buyer_message',
+          chatSessionId: sessionId,
+          buyerId: session.buyerId,
+          listingId: session.listingId || '',
+        },
+      };
+      
+      await sendNotificationToUser(sellerId, payload);
+      
+      return null;
+    } catch (error) {
+      console.error('Error sending buyer message notification:', error);
+      return null;
+    }
+  });
+
+// Send daily digest of new cars to interested users
+exports.sendDailyNewCarsDigest = onSchedule(
+  {
+    schedule: '0 18 * * *', // 6 PM daily
+    timeZone: 'Africa/Lusaka',
+  },
+  async (event) => {
+    try {
+      const yesterday = new Date();
+      yesterday.setDate(yesterday.getDate() - 1);
+      
+      // Get listings posted in last 24 hours
+      const newListingsSnapshot = await admin.firestore()
+        .collection('listings')
+        .where('status', '==', 'active')
+        .where('createdAt', '>=', yesterday)
+        .get();
+      
+      if (newListingsSnapshot.empty) {
+        console.log('No new listings in last 24 hours');
+        return null;
+      }
+      
+      const newListingsCount = newListingsSnapshot.size;
+      
+      // Get sample listings for the digest
+      const sampleListings = newListingsSnapshot.docs
+        .slice(0, 3)
+        .map(doc => doc.data());
+      
+      // Get all users who want daily digests
+      const usersSnapshot = await admin.firestore()
+        .collection('users')
+        .get();
+      
+      const notifications = [];
+      
+      for (const userDoc of usersSnapshot.docs) {
+        const user = userDoc.data();
+        const userId = userDoc.id;
+        
+        // Check notification preferences
+        const notificationSettings = user.notificationSettings || {};
+        if (notificationSettings.dailyDigest === false) continue;
+        
+        // Check if user has FCM token
+        if (!user.fcmToken) continue;
+        
+        // Create digest message
+        const listingsSummary = sampleListings
+          .map(l => `${l.brand} ${l.model} (${l.year})`)
+          .join(', ');
+        
+        const payload = {
+          notification: {
+            title: `🚗 ${newListingsCount} New Cars Today!`,
+            body: `Check out: ${listingsSummary}${newListingsCount > 3 ? ` and ${newListingsCount - 3} more` : ''}`,
+          },
+          data: {
+            type: 'daily_digest',
+            count: newListingsCount.toString(),
+          },
+        };
+        
+        notifications.push(sendNotificationToUser(userId, payload));
+      }
+      
+      await Promise.all(notifications);
+      console.log(`Sent ${notifications.length} daily digest notifications`);
+      
+      return null;
+    } catch (error) {
+      console.error('Error sending daily digest:', error);
       return null;
     }
   });

@@ -195,6 +195,27 @@ class AuthController extends StateNotifier<AuthState> {
     );
   }
 
+  // Send password reset email
+  Future<bool> sendPasswordResetEmail(String email) async {
+    state = state.copyWith(isLoading: true, clearError: true);
+
+    final result = await _authRepository.sendPasswordResetEmail(email);
+
+    return result.fold(
+      (failure) {
+        state = state.copyWith(
+          isLoading: false,
+          errorMessage: failure.message,
+        );
+        return false;
+      },
+      (_) {
+        state = state.copyWith(isLoading: false, clearError: true);
+        return true;
+      },
+    );
+  }
+
   // Sign out
   Future<void> signOut() async {
     state = state.copyWith(isLoading: true, clearError: true);
