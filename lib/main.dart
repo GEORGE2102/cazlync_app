@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'core/constants/app_theme.dart';
+import 'core/services/cache_service.dart';
 import 'presentation/controllers/auth_providers.dart';
 import 'presentation/controllers/auth_state.dart';
 import 'presentation/screens/login_screen.dart';
@@ -17,6 +18,9 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize local cache
+  await CacheService.initialize();
   
   // Initialize notifications
   final notificationService = NotificationService();

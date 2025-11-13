@@ -183,10 +183,19 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   // Helper method to create user in Firestore
+  // IMPORTANT: This uses merge: true to preserve existing fields like isAdmin
   Future<UserEntity> _createUserInFirestore(
     firebase_auth.User firebaseUser,
     String displayName,
   ) async {
+    // First, check if user document already exists
+    final existingUser = await _firestoreService.getUser(firebaseUser.uid);
+    if (existingUser != null) {
+      // User document exists, return it (preserves isAdmin and other fields)
+      return existingUser;
+    }
+
+    // User doesn't exist, create new one
     final userModel = UserModel.fromFirebaseUser(
       firebaseUser.uid,
       firebaseUser.email ?? '',
@@ -195,7 +204,10 @@ class AuthRepositoryImpl implements AuthRepository {
       photoUrl: firebaseUser.photoURL,
     );
 
+    // Create user document
     await _firestoreService.createUser(userModel);
+    
+    // Return the created user
     return userModel.toEntity();
   }
 }

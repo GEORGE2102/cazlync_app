@@ -7,7 +7,34 @@ class AdminController extends StateNotifier<AdminState> {
 
   AdminController({required AdminRepository adminRepository})
       : _adminRepository = adminRepository,
-        super(const AdminState());
+        super(const AdminState()) {
+    // Start listening to real-time updates
+    _initializeRealTimeListeners();
+  }
+
+  // Initialize real-time listeners
+  void _initializeRealTimeListeners() {
+    // Listen to pending listings in real-time
+    _adminRepository.watchPendingListings().listen((listings) {
+      state = state.copyWith(pendingListings: listings);
+    });
+
+    // Listen to listing counts in real-time
+    _adminRepository.watchListingCounts().listen((counts) {
+      final currentStats = Map<String, dynamic>.from(state.listingStats ?? {});
+      currentStats['activeListings'] = counts['active'];
+      currentStats['pendingListings'] = counts['pending'];
+      currentStats['totalListings'] = counts['total'];
+      state = state.copyWith(listingStats: currentStats);
+    });
+
+    // Listen to user count in real-time
+    _adminRepository.watchUserCount().listen((count) {
+      final currentStats = Map<String, dynamic>.from(state.userStats ?? {});
+      currentStats['totalUsers'] = count;
+      state = state.copyWith(userStats: currentStats);
+    });
+  }
 
   // Load all admin data
   Future<void> loadAdminData() async {

@@ -13,6 +13,11 @@ abstract class AdminRepository {
   Future<Either<Failure, List<ListingEntity>>> getPendingListings();
   Future<Either<Failure, List<ListingEntity>>> getReportedListings();
 
+  // Real-time streams
+  Stream<List<ListingEntity>> watchPendingListings();
+  Stream<Map<String, int>> watchListingCounts();
+  Stream<int> watchUserCount();
+
   // Analytics
   Future<Either<Failure, Map<String, dynamic>>> getAnalytics();
   Future<Either<Failure, Map<String, dynamic>>> getUserStats();

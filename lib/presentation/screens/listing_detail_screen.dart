@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import '../controllers/listing_providers.dart';
 import '../controllers/listing_state.dart';
 import '../controllers/auth_providers.dart';
@@ -51,9 +52,7 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
           ),
           IconButton(
             icon: const Icon(Icons.share),
-            onPressed: () {
-              // TODO: Share listing
-            },
+            onPressed: () => _shareListing(state.listing),
           ),
         ],
       ),
@@ -348,31 +347,37 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
 
     return Column(
       children: [
-        SizedBox(
-          height: 300,
-          child: PageView.builder(
-            itemCount: imageUrls.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              return CachedNetworkImage(
-                imageUrl: imageUrls[index],
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  color: Colors.grey[300],
-                  child: const Center(
-                    child: CircularProgressIndicator(),
+        GestureDetector(
+          onTap: () => _openImageGallery(imageUrls, _currentImageIndex),
+          child: SizedBox(
+            height: 300,
+            child: PageView.builder(
+              itemCount: imageUrls.length,
+              onPageChanged: (index) {
+                setState(() {
+                  _currentImageIndex = index;
+                });
+              },
+              itemBuilder: (context, index) {
+                return Hero(
+                  tag: 'listing_image_$index',
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrls[index],
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.error),
+                    ),
                   ),
-                ),
-                errorWidget: (context, url, error) => Container(
-                  color: Colors.grey[300],
-                  child: const Icon(Icons.error),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
         if (imageUrls.length > 1)
@@ -398,6 +403,36 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
           ),
       ],
     );
+  }
+
+  // Open full-screen image gallery
+  void _openImageGallery(List<String> imageUrls, int initialIndex) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => _FullScreenImageGallery(
+          imageUrls: imageUrls,
+          initialIndex: initialIndex,
+        ),
+      ),
+    );
+  }
+
+  // Share listing
+  void _shareListing(listing) {
+    if (listing == null) return;
+    
+    final text = '''
+Check out this ${listing.brand} ${listing.model} (${listing.year}) on CazLync!
+
+Price: K${Formatters.formatPrice(listing.price)}
+Mileage: ${Formatters.formatNumber(listing.mileage)} km
+
+${listing.description}
+
+View on CazLync app
+''';
+    
+    Share.share(text, subject: '${listing.brand} ${listing.model} - CazLync');
   }
 
   Widget _buildSpecifications(listing) {
@@ -503,6 +538,89 @@ class _ListingDetailScreenState extends ConsumerState<ListingDetailScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Full-screen image gallery widget
+class _FullScreenImageGallery extends StatefulWidget {
+  final List<String> imageUrls;
+  final int initialIndex;
+
+  const _FullScreenImageGallery({
+    required this.imageUrls,
+    required this.initialIndex,
+  });
+
+  @override
+  State<_FullScreenImageGallery> createState() => _FullScreenImageGalleryState();
+}
+
+class _FullScreenImageGalleryState extends State<_FullScreenImageGallery> {
+  late PageController _pageController;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+    _pageController = PageController(initialPage: widget.initialIndex);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        title: Text(
+          '${_currentIndex + 1} / ${widget.imageUrls.length}',
+          style: const TextStyle(color: Colors.white),
+        ),
+        iconTheme: const IconThemeData(color: Colors.white),
+      ),
+      body: PageView.builder(
+        controller: _pageController,
+        itemCount: widget.imageUrls.length,
+        onPageChanged: (index) {
+          setState(() {
+            _currentIndex = index;
+          });
+        },
+        itemBuilder: (context, index) {
+          return InteractiveViewer(
+            minScale: 0.5,
+            maxScale: 4.0,
+            child: Center(
+              child: Hero(
+                tag: 'listing_image_$index',
+                child: CachedNetworkImage(
+                  imageUrl: widget.imageUrls[index],
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => const Center(
+                    child: Icon(
+                      Icons.error,
+                      color: Colors.white,
+                      size: 64,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }

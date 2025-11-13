@@ -63,6 +63,24 @@ class AdminRepositoryImpl implements AdminRepository {
     }
   }
 
+  // Real-time streams
+  @override
+  Stream<List<ListingEntity>> watchPendingListings() {
+    return _adminService.watchPendingListings().map(
+          (listings) => listings.map((model) => model.toEntity()).toList(),
+        );
+  }
+
+  @override
+  Stream<Map<String, int>> watchListingCounts() {
+    return _adminService.watchListingCounts();
+  }
+
+  @override
+  Stream<int> watchUserCount() {
+    return _adminService.watchUserCount();
+  }
+
   @override
   Future<Either<Failure, Map<String, dynamic>>> getAnalytics() async {
     try {

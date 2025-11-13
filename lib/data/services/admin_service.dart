@@ -46,6 +46,60 @@ class AdminService {
         .toList();
   }
 
+  // Real-time stream for pending listings
+  Stream<List<ListingModel>> watchPendingListings() {
+    return _firestore
+        .collection('listings')
+        .where('status', isEqualTo: 'pending')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => ListingModel.fromFirestore(doc))
+            .toList());
+  }
+
+  // Real-time stream for listing count by status
+  Stream<Map<String, int>> watchListingCounts() {
+    return _firestore.collection('listings').snapshots().map((snapshot) {
+      int pending = 0;
+      int active = 0;
+      int rejected = 0;
+      int deleted = 0;
+
+      for (final doc in snapshot.docs) {
+        final status = doc.data()['status'] as String?;
+        switch (status) {
+          case 'pending':
+            pending++;
+            break;
+          case 'active':
+            active++;
+            break;
+          case 'rejected':
+            rejected++;
+            break;
+          case 'deleted':
+            deleted++;
+            break;
+        }
+      }
+
+      return {
+        'pending': pending,
+        'active': active,
+        'rejected': rejected,
+        'deleted': deleted,
+        'total': snapshot.size,
+      };
+    });
+  }
+
+  // Real-time stream for user count
+  Stream<int> watchUserCount() {
+    return _firestore.collection('users').snapshots().map((snapshot) => snapshot.size);
+  }
+
   Future<List<ListingModel>> getReportedListings() async {
     final snapshot = await _firestore
         .collection('reports')

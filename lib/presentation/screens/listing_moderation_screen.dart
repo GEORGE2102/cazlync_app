@@ -34,7 +34,7 @@ class _ListingModerationScreenState
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onTap: () {
+            onPressed: () {
               ref.read(adminControllerProvider.notifier).loadPendingListings();
             },
           ),

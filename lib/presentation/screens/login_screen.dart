@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/utils/validators.dart';
 import '../controllers/auth_providers.dart';
 import 'register_screen.dart';
+import 'admin_register_screen.dart';
+import 'debug_user_screen.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -194,6 +196,48 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                               );
                             },
                       child: const Text('Register'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                // Admin registration button (temporary - remove in production)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AdminRegisterScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.admin_panel_settings, size: 16),
+                      label: const Text(
+                        'Create Admin',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                      ),
+                    ),
+                    const Text('|', style: TextStyle(color: Colors.grey)),
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const DebugUserScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bug_report, size: 16),
+                      label: const Text(
+                        'Debug',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.grey,
+                      ),
                     ),
                   ],
                 ),

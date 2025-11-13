@@ -6,6 +6,7 @@ import 'edit_profile_screen.dart';
 import 'my_listings_screen.dart';
 import 'favorites_screen.dart';
 import 'settings_screen.dart';
+import 'admin_dashboard_screen.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -49,6 +50,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             expandedHeight: 250,
             floating: false,
             pinned: true,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Colors.white),
+                onPressed: () async {
+                  await ref.read(authControllerProvider.notifier).refreshUser();
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Profile refreshed')),
+                    );
+                  }
+                },
+                tooltip: 'Refresh Profile',
+              ),
+              IconButton(
+                icon: const Icon(Icons.logout, color: Colors.white),
+                onPressed: () => _showLogoutDialog(context, ref),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
@@ -109,12 +128,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ),
             ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.logout, color: Colors.white),
-                onPressed: () => _showLogoutDialog(context, ref),
-              ),
-            ],
           ),
           
           // Menu Items
@@ -135,6 +148,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           '${stats['listings'] ?? 0}',
                           Icons.car_rental,
                           Colors.blue,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MyListingsScreen(),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -145,6 +164,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           '${stats['favorites'] ?? 0}',
                           Icons.favorite,
                           Colors.red,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const FavoritesScreen(),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -161,6 +186,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           '${stats['views'] ?? 0}',
                           Icons.visibility,
                           Colors.green,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MyListingsScreen(),
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -171,6 +202,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                           '${stats['chats'] ?? 0}',
                           Icons.chat,
                           Colors.orange,
+                          onTap: () {
+                            // Navigate to chats tab
+                            DefaultTabController.of(context)?.animateTo(2);
+                          },
                         ),
                       ),
                     ],
@@ -223,6 +258,30 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   ),
                   
                   const SizedBox(height: 24),
+                  
+                  // Admin Section (only for admins)
+                  if (user.isAdmin) ...[
+                    _buildMenuSection(
+                      context,
+                      'Administration',
+                      [
+                        _buildMenuItem(
+                          context,
+                          Icons.admin_panel_settings,
+                          'Admin Dashboard',
+                          'Manage platform and moderate content',
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AdminDashboardScreen(),
+                            ),
+                          ),
+                          color: Theme.of(context).colorScheme.tertiary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                  ],
                   
                   // App Settings Section
                   _buildMenuSection(
@@ -293,35 +352,40 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     String title,
     String value,
     IconData icon,
-    Color color,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, color: color, size: 32),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
+    Color color, {
+    VoidCallback? onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 32),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
             ),
-          ),
-          Text(
-            title,
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -368,18 +432,21 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     IconData icon,
     String title,
     String subtitle,
-    VoidCallback onTap,
-  ) {
+    VoidCallback onTap, {
+    Color? color,
+  }) {
+    final itemColor = color ?? Theme.of(context).colorScheme.primary;
+    
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+          color: itemColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
-          color: Theme.of(context).colorScheme.primary,
+          color: itemColor,
           size: 20,
         ),
       ),

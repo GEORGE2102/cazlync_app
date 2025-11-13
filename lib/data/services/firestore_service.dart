@@ -32,6 +32,30 @@ class FirestoreService {
     }
   }
 
+  // Create user in Firestore with merge (preserves existing fields like isAdmin)
+  Future<void> createUserWithMerge(UserModel user) async {
+    try {
+      await _usersCollection
+          .doc(user.id)
+          .set(
+            user.toFirestore(),
+            SetOptions(merge: true), // This preserves existing fields
+          )
+          .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw ServerException(
+                'Firestore timeout. Please check if Firestore is enabled in Firebase Console.',
+              );
+            },
+          );
+    } on FirebaseException catch (e) {
+      throw ServerException('Failed to create user: ${e.message}');
+    } catch (e) {
+      throw ServerException('Failed to create user: ${e.toString()}');
+    }
+  }
+
   // Get user from Firestore
   Future<UserModel?> getUser(String userId) async {
     try {

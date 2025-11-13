@@ -221,15 +221,20 @@ class AuthController extends StateNotifier<AuthState> {
 
   // Refresh current user data
   Future<void> refreshUser() async {
+    state = state.copyWith(isLoading: true);
+    
     final result = await _authRepository.getCurrentUser();
     
     result.fold(
       (failure) {
         // Silently fail - user is still authenticated
+        state = state.copyWith(isLoading: false);
       },
       (user) {
         if (user != null) {
-          state = state.copyWith(user: user);
+          state = state.copyWith(user: user, isLoading: false);
+        } else {
+          state = state.copyWith(isLoading: false);
         }
       },
     );
