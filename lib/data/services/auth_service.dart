@@ -215,18 +215,26 @@ class AuthService {
   // Sign out
   Future<void> signOut() async {
     try {
-      final futures = <Future>[
-        _firebaseAuth.signOut(),
-        _facebookAuth.logOut(),
-      ];
+      // Sign out from Firebase first
+      await _firebaseAuth.signOut();
+      
+      // Try to sign out from social providers, but don't fail if they error
+      try {
+        await _facebookAuth.logOut();
+      } catch (e) {
+        // Ignore Facebook logout errors
+      }
       
       // Only sign out from Google if it's initialized
       if (_googleSignIn != null) {
-        futures.add(_googleSignIn!.signOut());
+        try {
+          await _googleSignIn!.signOut();
+        } catch (e) {
+          // Ignore Google logout errors
+        }
       }
-      
-      await Future.wait(futures);
     } catch (e) {
+      // Only throw if Firebase sign out fails
       throw AuthenticationException('Sign out failed');
     }
   }

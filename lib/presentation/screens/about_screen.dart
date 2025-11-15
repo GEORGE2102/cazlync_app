@@ -103,37 +103,6 @@ class AboutScreen extends StatelessWidget {
             
             const SizedBox(height: 32),
             
-            // Quick Links
-            Text(
-              'Quick Links',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 16),
-            
-            _buildLinkItem(context, 'Listings', Icons.car_rental),
-            _buildLinkItem(context, 'FAQ', Icons.help_outline),
-            _buildLinkItem(context, 'Our Team', Icons.people_outline),
-            _buildLinkItem(context, 'Blog', Icons.article_outlined),
-            _buildLinkItem(context, 'Terms & Conditions', Icons.description_outlined),
-            
-            const SizedBox(height: 32),
-            
-            // Copyright
-            Center(
-              child: Text(
-                '© 2023 by Mukanu Media. All rights reserved.',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
             // App Version
             Center(
               child: Text(
@@ -144,6 +113,7 @@ class AboutScreen extends StatelessWidget {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
@@ -228,27 +198,6 @@ class AboutScreen extends StatelessWidget {
             : null,
         onTap: onTap,
       ),
-    );
-  }
-
-  Widget _buildLinkItem(BuildContext context, String title, IconData icon) {
-    return ListTile(
-      leading: Icon(
-        icon,
-        color: Theme.of(context).colorScheme.primary,
-        size: 22,
-      ),
-      title: Text(title),
-      trailing: Icon(
-        Icons.chevron_right,
-        color: Colors.grey[400],
-      ),
-      onTap: () {
-        // Navigate to respective screens or show info
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('$title - Coming soon')),
-        );
-      },
     );
   }
 

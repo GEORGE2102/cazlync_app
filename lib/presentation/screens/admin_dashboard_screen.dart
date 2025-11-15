@@ -4,6 +4,7 @@ import '../controllers/admin_providers.dart';
 import '../controllers/admin_state.dart';
 import 'listing_moderation_screen.dart';
 import 'analytics_screen.dart';
+import 'user_management_screen.dart';
 
 class AdminDashboardScreen extends ConsumerStatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -265,6 +266,21 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => const AnalyticsScreen(),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 12),
+        _buildActionCard(
+          icon: Icons.people,
+          title: 'User Management',
+          subtitle: 'Verify users and manage accounts',
+          color: Colors.purple,
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const UserManagementScreen(),
               ),
             );
           },

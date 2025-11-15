@@ -264,30 +264,14 @@ class AdminService {
   }
 
   // User Management
-  Future<void> suspendUser(String userId, String reason) async {
-    await _firestore.collection('users').doc(userId).update({
-      'isSuspended': true,
-      'suspensionReason': reason,
-      'suspendedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> unsuspendUser(String userId) async {
-    await _firestore.collection('users').doc(userId).update({
-      'isSuspended': false,
-      'suspensionReason': FieldValue.delete(),
-      'suspendedAt': FieldValue.delete(),
-      'unsuspendedAt': FieldValue.serverTimestamp(),
-    });
-  }
-
-  Future<void> verifyUser(String userId) async {
+  Future<void> verifyUser(String userId, {int durationDays = 365}) async {
+    final expiresAt = DateTime.now().add(Duration(days: durationDays));
+    
     await _firestore.collection('users').doc(userId).update({
       'isVerified': true,
       'verifiedAt': FieldValue.serverTimestamp(),
-      'verificationExpiresAt': DateTime.now()
-          .add(const Duration(days: 365))
-          .toIso8601String(),
+      'verificationExpiresAt': Timestamp.fromDate(expiresAt),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
   }
 
@@ -296,7 +280,56 @@ class AdminService {
       'isVerified': false,
       'verifiedAt': FieldValue.delete(),
       'verificationExpiresAt': FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> suspendUser(String userId, String reason) async {
+    await _firestore.collection('users').doc(userId).update({
+      'isSuspended': true,
+      'suspensionReason': reason,
+      'suspendedAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> unsuspendUser(String userId) async {
+    await _firestore.collection('users').doc(userId).update({
+      'isSuspended': false,
+      'suspensionReason': FieldValue.delete(),
+      'suspendedAt': FieldValue.delete(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  // Get all users for management
+  Future<List<Map<String, dynamic>>> getAllUsers() async {
+    final snapshot = await _firestore
+        .collection('users')
+        .orderBy('createdAt', descending: true)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
+  }
+
+  // Search users
+  Future<List<Map<String, dynamic>>> searchUsers(String query) async {
+    final snapshot = await _firestore
+        .collection('users')
+        .where('displayName', isGreaterThanOrEqualTo: query)
+        .where('displayName', isLessThanOrEqualTo: '$query\uf8ff')
+        .limit(20)
+        .get();
+
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      data['id'] = doc.id;
+      return data;
+    }).toList();
   }
 
   // Reports

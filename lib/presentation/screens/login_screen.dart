@@ -199,16 +199,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   validator: Validators.validatePassword,
                   enabled: !authState.isLoading,
                 ),
-                const SizedBox(height: 8),
-                // Forgot password link
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: authState.isLoading ? null : _showForgotPasswordDialog,
-                    child: const Text('Forgot Password?'),
-                  ),
-                ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 // Login button
                 ElevatedButton(
                   onPressed: authState.isLoading ? null : _handleEmailLogin,
@@ -220,7 +211,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         )
                       : const Text('Login'),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 8),
+                // Forgot password link
+                Align(
+                  alignment: Alignment.center,
+                  child: TextButton(
+                    onPressed: authState.isLoading ? null : _showForgotPasswordDialog,
+                    style: TextButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                    ),
+                    child: const Text('Forgot Password?'),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 // Divider
                 Row(
                   children: [

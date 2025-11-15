@@ -57,6 +57,7 @@ dependencies:
   # UI Components
   shimmer: ^3.0.0
   flutter_svg: ^2.0.10+1
+  fl_chart: ^0.69.0
   
   # Sharing
   share_plus: ^10.1.2

@@ -32,6 +32,13 @@ async function sendNotificationToUser(userId, payload) {
       return false;
     }
     
+    // Check notification preferences
+    const prefs = user.notificationSettings || {};
+    if (payload.data.type && prefs[payload.data.type] === false) {
+      console.log(`User disabled notification: ${payload.data.type}`);
+      return false;
+    }
+    
     await admin.messaging().send({
       token: fcmToken,
       notification: payload.notification,
@@ -72,26 +79,6 @@ exports.sendMessageNotification = onDocumentCreated(
         ? session.sellerId 
         : session.buyerId;
       
-      // Check if recipient has notifications enabled
-      const recipientDoc = await admin.firestore()
-        .collection('users')
-        .doc(recipientId)
-        .get();
-      
-      if (!recipientDoc.exists) {
-        console.log('Recipient not found');
-        return null;
-      }
-      
-      const recipient = recipientDoc.data();
-      
-      // Check notification preferences
-      const notificationSettings = recipient.notificationSettings || {};
-      if (notificationSettings.messages === false) {
-        console.log('Recipient has disabled message notifications');
-        return null;
-      }
-      
       // Get sender info for better notification
       const senderDoc = await admin.firestore()
         .collection('users')
@@ -99,19 +86,20 @@ exports.sendMessageNotification = onDocumentCreated(
         .get();
       
       const senderName = senderDoc.exists 
-        ? senderDoc.data().displayName || 'Someone'
+        ? (senderDoc.data().fullName || senderDoc.data().displayName || 'Someone')
         : 'Someone';
       
       // Send notification
       const payload = {
         notification: {
           title: `💬 ${senderName}`,
-          body: message.text.length > 100 
-            ? message.text.substring(0, 100) + '...' 
-            : message.text,
+          body: (message.text || message.message || '').length > 100 
+            ? (message.text || message.message).substring(0, 100) + '...' 
+            : (message.text || message.message),
         },
         data: {
-          type: 'new_message',
+          type: 'messages',
+          event: 'new_message',
           chatSessionId: sessionId,
           senderId: senderId,
           listingId: session.listingId || '',
@@ -135,38 +123,21 @@ exports.sendListingStatusNotification = onDocumentUpdated(
       const before = event.data.before.data();
       const after = event.data.after.data();
       const listingId = event.params.listingId;
-      const sellerId = after.sellerId;
-      
-      // Check notification preferences
-      const sellerDoc = await admin.firestore()
-        .collection('users')
-        .doc(sellerId)
-        .get();
-      
-      if (!sellerDoc.exists) {
-        console.log('Seller not found');
-        return null;
-      }
-      
-      const seller = sellerDoc.data();
-      const notificationSettings = seller.notificationSettings || {};
-      
-      if (notificationSettings.listings === false) {
-        console.log('Seller has disabled listing notifications');
-        return null;
-      }
+      const sellerId = after.sellerId || after.ownerId;
       
       let payload = null;
       
       // Listing approved
       if (before.status !== 'active' && after.status === 'active') {
+        const title = after.title || `${after.brand} ${after.model} (${after.year})`;
         payload = {
           notification: {
             title: '✅ Listing Approved!',
-            body: `Your ${after.brand} ${after.model} (${after.year}) is now live and visible to buyers!`,
+            body: `${title} is now live and visible to buyers!`,
           },
           data: {
-            type: 'listing_approved',
+            type: 'listings',
+            event: 'listing_approved',
             listingId: listingId,
           },
         };
@@ -174,14 +145,16 @@ exports.sendListingStatusNotification = onDocumentUpdated(
       
       // Listing rejected
       else if (before.status !== 'rejected' && after.status === 'rejected') {
+        const title = after.title || `${after.brand} ${after.model}`;
         const reason = after.rejectionReason || 'Please review our listing guidelines';
         payload = {
           notification: {
             title: '❌ Listing Rejected',
-            body: `Your ${after.brand} ${after.model} listing was rejected. ${reason}`,
+            body: `Your ${title} listing was rejected. ${reason}`,
           },
           data: {
-            type: 'listing_rejected',
+            type: 'listings',
+            event: 'listing_rejected',
             listingId: listingId,
           },
         };
@@ -189,13 +162,15 @@ exports.sendListingStatusNotification = onDocumentUpdated(
       
       // Listing sold/deleted by admin
       else if (before.status === 'active' && after.status === 'deleted') {
+        const title = after.title || `${after.brand} ${after.model}`;
         payload = {
           notification: {
             title: '🚫 Listing Removed',
-            body: `Your ${after.brand} ${after.model} listing has been removed.`,
+            body: `Your ${title} listing has been removed.`,
           },
           data: {
-            type: 'listing_removed',
+            type: 'listings',
+            event: 'listing_removed',
             listingId: listingId,
           },
         };
@@ -227,46 +202,36 @@ exports.checkPremiumExpiry = onSchedule(
       const expiringListings = await admin.firestore()
         .collection('listings')
         .where('isPremium', '==', true)
-        .where('premiumExpiresAt', '<=', threeDaysFromNow)
-        .where('premiumExpiresAt', '>', new Date())
+        .where('premiumExpiry', '<=', threeDaysFromNow.getTime())
+        .where('premiumExpiry', '>', new Date().getTime())
         .get();
       
       const notifications = [];
       
       for (const doc of expiringListings.docs) {
         const listing = doc.data();
-        const sellerId = listing.sellerId;
+        const sellerId = listing.sellerId || listing.ownerId;
         
-        // Check notification preferences
-        const sellerDoc = await admin.firestore()
-          .collection('users')
-          .doc(sellerId)
-          .get();
+        const daysLeft = Math.ceil(
+          (listing.premiumExpiry - Date.now()) / (1000 * 60 * 60 * 24)
+        );
         
-        if (sellerDoc.exists) {
-          const seller = sellerDoc.data();
-          const notificationSettings = seller.notificationSettings || {};
-          
-          if (notificationSettings.premium !== false) {
-            const daysLeft = Math.ceil(
-              (listing.premiumExpiresAt.toDate() - new Date()) / (1000 * 60 * 60 * 24)
-            );
-            
-            const payload = {
-              notification: {
-                title: '⭐ Premium Listing Expiring Soon',
-                body: `Your ${listing.brand} ${listing.model} premium listing expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Renew now to stay featured!`,
-              },
-              data: {
-                type: 'premium_expiry',
-                listingId: doc.id,
-                daysLeft: daysLeft.toString(),
-              },
-            };
-            
-            notifications.push(sendNotificationToUser(sellerId, payload));
-          }
-        }
+        const title = listing.title || `${listing.brand} ${listing.model}`;
+        
+        const payload = {
+          notification: {
+            title: '⭐ Premium Listing Expiring Soon',
+            body: `Your ${title} premium listing expires in ${daysLeft} day${daysLeft > 1 ? 's' : ''}. Renew now to stay featured!`,
+          },
+          data: {
+            type: 'premium',
+            event: 'premium_expiring',
+            listingId: doc.id,
+            daysLeft: daysLeft.toString(),
+          },
+        };
+        
+        notifications.push(sendNotificationToUser(sellerId, payload));
       }
       
       await Promise.all(notifications);
@@ -308,41 +273,24 @@ exports.sendFavoriteNotification = onDocumentUpdated(
         if (!listingDoc.exists) continue;
         
         const listing = listingDoc.data();
-        const sellerId = listing.sellerId;
+        const sellerId = listing.sellerId || listing.ownerId;
         
         // Don't notify if user favorited their own listing
         if (sellerId === userId) continue;
         
-        // Check notification preferences
-        const sellerDoc = await admin.firestore()
-          .collection('users')
-          .doc(sellerId)
-          .get();
-        
-        if (!sellerDoc.exists) continue;
-        
-        const seller = sellerDoc.data();
-        const notificationSettings = seller.notificationSettings || {};
-        
-        if (notificationSettings.favorites === false) continue;
-        
         // Get user who favorited
-        const userDoc = await admin.firestore()
-          .collection('users')
-          .doc(userId)
-          .get();
+        const userName = after.fullName || after.displayName || 'Someone';
         
-        const userName = userDoc.exists 
-          ? userDoc.data().displayName || 'Someone'
-          : 'Someone';
+        const title = listing.title || `${listing.brand} ${listing.model}`;
         
         const payload = {
           notification: {
             title: '❤️ New Favorite!',
-            body: `${userName} saved your ${listing.brand} ${listing.model} listing`,
+            body: `${userName} saved your ${title} listing`,
           },
           data: {
-            type: 'new_favorite',
+            type: 'favorites',
+            event: 'listing_favorited',
             listingId: listingId,
             userId: userId,
           },
@@ -369,13 +317,16 @@ exports.sendWelcomeNotification = onDocumentCreated(
       // Wait a bit for FCM token to be set
       await new Promise(resolve => setTimeout(resolve, 5000));
       
+      const userName = user.fullName || user.displayName || 'there';
+      
       const payload = {
         notification: {
           title: '🎉 Welcome to CazLync!',
-          body: `Hi ${user.displayName || 'there'}! Start browsing cars or post your first listing.`,
+          body: `Hi ${userName}! Start browsing cars or post your first listing.`,
         },
         data: {
-          type: 'welcome',
+          type: 'listings',
+          event: 'welcome',
         },
       };
       
@@ -397,8 +348,8 @@ exports.sendViewMilestoneNotification = onDocumentUpdated(
       const after = event.data.after.data();
       const listingId = event.params.listingId;
       
-      const beforeViews = before.viewCount || 0;
-      const afterViews = after.viewCount || 0;
+      const beforeViews = before.views || before.viewCount || 0;
+      const afterViews = after.views || after.viewCount || 0;
       
       // Check for milestone views (50, 100, 500, 1000)
       const milestones = [50, 100, 500, 1000];
@@ -410,32 +361,17 @@ exports.sendViewMilestoneNotification = onDocumentUpdated(
         return null;
       }
       
-      const sellerId = after.sellerId;
-      
-      // Check notification preferences
-      const sellerDoc = await admin.firestore()
-        .collection('users')
-        .doc(sellerId)
-        .get();
-      
-      if (!sellerDoc.exists) {
-        return null;
-      }
-      
-      const seller = sellerDoc.data();
-      const notificationSettings = seller.notificationSettings || {};
-      
-      if (notificationSettings.listings === false) {
-        return null;
-      }
+      const sellerId = after.sellerId || after.ownerId;
+      const title = after.title || `${after.brand} ${after.model}`;
       
       const payload = {
         notification: {
           title: '🔥 Your Listing is Popular!',
-          body: `Your ${after.brand} ${after.model} has reached ${reachedMilestone} views!`,
+          body: `Your ${title} has reached ${reachedMilestone} views!`,
         },
         data: {
-          type: 'view_milestone',
+          type: 'listings',
+          event: 'view_milestone',
           listingId: listingId,
           views: reachedMilestone.toString(),
         },
@@ -450,7 +386,7 @@ exports.sendViewMilestoneNotification = onDocumentUpdated(
     }
   });
 
-// Send notification to users when a new car is posted (latest cars)
+// Send notification to users when a new car is posted
 exports.notifyNewCarPosted = onDocumentCreated(
   'listings/{listingId}',
   async (event) => {
@@ -464,7 +400,13 @@ exports.notifyNewCarPosted = onDocumentCreated(
         return null;
       }
       
-      // Get all users who have notifications enabled
+      const sellerId = listing.sellerId || listing.ownerId;
+      const title = listing.title || `${listing.brand} ${listing.model} (${listing.year})`;
+      const priceText = listing.contactForPrice 
+        ? 'Contact for price' 
+        : `K${listing.price.toLocaleString()}`;
+      
+      // Get all users
       const usersSnapshot = await admin.firestore()
         .collection('users')
         .get();
@@ -472,30 +414,21 @@ exports.notifyNewCarPosted = onDocumentCreated(
       const notifications = [];
       
       for (const userDoc of usersSnapshot.docs) {
-        const user = userDoc.data();
         const userId = userDoc.id;
         
         // Don't notify the seller
-        if (userId === listing.sellerId) continue;
-        
-        // Check notification preferences
-        const notificationSettings = user.notificationSettings || {};
-        if (notificationSettings.newListings === false) continue;
-        
-        // Check if user has FCM token
-        if (!user.fcmToken) continue;
+        if (userId === sellerId) continue;
         
         // Send notification
         const payload = {
           notification: {
             title: '🚗 New Car Posted!',
-            body: `${listing.brand} ${listing.model} (${listing.year}) - ${listing.contactForPrice ? 'Contact for price' : 'K' + listing.price.toLocaleString()}`,
+            body: `${title} - ${priceText}`,
           },
           data: {
-            type: 'new_listing',
+            type: 'newListings',
+            event: 'new_listing',
             listingId: listingId,
-            brand: listing.brand,
-            model: listing.model,
           },
         };
         
@@ -556,26 +489,6 @@ exports.notifySellerNewBuyerMessage = onDocumentCreated(
         return null;
       }
       
-      // Get seller info
-      const sellerDoc = await admin.firestore()
-        .collection('users')
-        .doc(sellerId)
-        .get();
-      
-      if (!sellerDoc.exists) {
-        console.log('Seller not found');
-        return null;
-      }
-      
-      const seller = sellerDoc.data();
-      
-      // Check notification preferences
-      const notificationSettings = seller.notificationSettings || {};
-      if (notificationSettings.messages === false) {
-        console.log('Seller has disabled message notifications');
-        return null;
-      }
-      
       // Get buyer info
       const buyerDoc = await admin.firestore()
         .collection('users')
@@ -583,7 +496,7 @@ exports.notifySellerNewBuyerMessage = onDocumentCreated(
         .get();
       
       const buyerName = buyerDoc.exists 
-        ? buyerDoc.data().displayName || 'A buyer'
+        ? (buyerDoc.data().fullName || buyerDoc.data().displayName || 'A buyer')
         : 'A buyer';
       
       // Get listing info
@@ -596,18 +509,22 @@ exports.notifySellerNewBuyerMessage = onDocumentCreated(
         
         if (listingDoc.exists) {
           const listing = listingDoc.data();
-          listingInfo = ` about your ${listing.brand} ${listing.model}`;
+          const title = listing.title || `${listing.brand} ${listing.model}`;
+          listingInfo = ` about your ${title}`;
         }
       }
+      
+      const messageText = message.text || message.message || '';
       
       // Send notification
       const payload = {
         notification: {
           title: '💬 New Buyer Inquiry!',
-          body: `${buyerName} is interested${listingInfo}: "${message.text.substring(0, 80)}${message.text.length > 80 ? '...' : ''}"`,
+          body: `${buyerName} is interested${listingInfo}: "${messageText.substring(0, 80)}${messageText.length > 80 ? '...' : ''}"`,
         },
         data: {
-          type: 'buyer_message',
+          type: 'messages',
+          event: 'buyer_inquiry',
           chatSessionId: sessionId,
           buyerId: session.buyerId,
           listingId: session.listingId || '',
@@ -631,8 +548,7 @@ exports.sendDailyNewCarsDigest = onSchedule(
   },
   async (event) => {
     try {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
+      const yesterday = Date.now() - (24 * 60 * 60 * 1000);
       
       // Get listings posted in last 24 hours
       const newListingsSnapshot = await admin.firestore()
@@ -648,12 +564,7 @@ exports.sendDailyNewCarsDigest = onSchedule(
       
       const newListingsCount = newListingsSnapshot.size;
       
-      // Get sample listings for the digest
-      const sampleListings = newListingsSnapshot.docs
-        .slice(0, 3)
-        .map(doc => doc.data());
-      
-      // Get all users who want daily digests
+      // Get all users
       const usersSnapshot = await admin.firestore()
         .collection('users')
         .get();
@@ -661,28 +572,16 @@ exports.sendDailyNewCarsDigest = onSchedule(
       const notifications = [];
       
       for (const userDoc of usersSnapshot.docs) {
-        const user = userDoc.data();
         const userId = userDoc.id;
-        
-        // Check notification preferences
-        const notificationSettings = user.notificationSettings || {};
-        if (notificationSettings.dailyDigest === false) continue;
-        
-        // Check if user has FCM token
-        if (!user.fcmToken) continue;
-        
-        // Create digest message
-        const listingsSummary = sampleListings
-          .map(l => `${l.brand} ${l.model} (${l.year})`)
-          .join(', ');
         
         const payload = {
           notification: {
             title: `🚗 ${newListingsCount} New Cars Today!`,
-            body: `Check out: ${listingsSummary}${newListingsCount > 3 ? ` and ${newListingsCount - 3} more` : ''}`,
+            body: 'Check out what\'s new on CazLync.',
           },
           data: {
-            type: 'daily_digest',
+            type: 'dailyDigest',
+            event: 'daily_digest',
             count: newListingsCount.toString(),
           },
         };

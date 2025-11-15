@@ -15,8 +15,8 @@ class ListingService {
   }) async {
     Query query = _firestore.collection('listings');
 
-    // Apply filters
-    query = query.where('status', isEqualTo: 'active');
+    // Apply filters - show both active and sold listings
+    query = query.where('status', whereIn: ['active', 'sold']);
 
     if (filter != null) {
       if (filter.brand != null) {
