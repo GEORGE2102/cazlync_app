@@ -328,14 +328,26 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  TextButton.icon(
-                    onPressed: () => _markAsSold(listing.id),
-                    icon: const Icon(Icons.check_circle, size: 18),
-                    label: const Text('Mark as Sold'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: Colors.red,
+                  // Show "Mark as Active" for sold listings
+                  if (listing.status == ListingStatus.sold)
+                    TextButton.icon(
+                      onPressed: () => _markAsActive(listing.id),
+                      icon: const Icon(Icons.refresh, size: 18),
+                      label: const Text('Mark as Active'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.green,
+                      ),
                     ),
-                  ),
+                  // Show "Mark as Sold" for active listings
+                  if (listing.status == ListingStatus.active)
+                    TextButton.icon(
+                      onPressed: () => _markAsSold(listing.id),
+                      icon: const Icon(Icons.check_circle, size: 18),
+                      label: const Text('Mark as Sold'),
+                      style: TextButton.styleFrom(
+                        foregroundColor: Colors.red,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -375,7 +387,7 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Mark as Sold'),
         content: const Text(
-          'Are you sure you want to mark this listing as sold? This will hide it from search results.',
+          'Are you sure you want to mark this listing as sold? It will show with a "SOLD" badge.',
         ),
         actions: [
           TextButton(
@@ -407,6 +419,55 @@ class _MyListingsScreenState extends ConsumerState<MyListingsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Listing marked as sold'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        
+        // Refresh listings
+        _loadMyListings();
+      }
+    }
+  }
+
+  Future<void> _markAsActive(String listingId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mark as Active'),
+        content: const Text(
+          'Are you sure you want to mark this listing as active again? It will be visible in search results.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+            ),
+            child: const Text('Mark as Active'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      // Update listing status to active
+      await FirebaseFirestore.instance
+          .collection('listings')
+          .doc(listingId)
+          .update({
+        'status': 'active',
+        'soldAt': FieldValue.delete(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Listing marked as active'),
             backgroundColor: Colors.green,
           ),
         );
